@@ -55,7 +55,7 @@ Supabaseで実行するSQLマイグレーションファイル（`supabase/migra
 - [x] `git commit` が1件作成されている
 
 **実装メモ**: @supabase/supabase-js をインストール。環境変数未設定時は空文字列にフォールバックしビルドエラーを回避。
-**commit hash**: —
+**commit hash**: cffaa13
 
 ---
 
