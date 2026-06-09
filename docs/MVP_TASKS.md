@@ -153,7 +153,7 @@ Supabaseで実行するSQLマイグレーションファイル（`supabase/migra
 - [x] `git commit` が1件作成されている
 
 **実装メモ**: CandidateList.tsx に `meetingId`・`isConfirmed`・`confirmedIndex` props を追加。確定操作は Supabase update → `setIsConfirmed(true)` + `router.refresh()` で管理。確定済み時はラジオボタン・確定ボタンを非表示にし確定日時を強調表示。page.tsx に「確定済み」バッジを追加し `confirmed_index !== null` で初期確定状態を判定。
-**commit hash**: —
+**commit hash**: 062c519
 
 ---
 
