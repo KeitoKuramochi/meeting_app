@@ -40,13 +40,21 @@ export default async function ReviewPage({ params }: Props) {
   }
 
   const meeting: Meeting = data
+  const isConfirmed = meeting.confirmed_index !== null
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="mx-auto max-w-lg">
-        <h1 className="mb-6 text-xl font-bold text-gray-800">
-          面談リクエストの確認
-        </h1>
+        <div className="mb-4 flex items-center gap-3">
+          <h1 className="text-xl font-bold text-gray-800">
+            面談リクエストの確認
+          </h1>
+          {isConfirmed && (
+            <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
+              確定済み
+            </span>
+          )}
+        </div>
 
         {/* 学生情報 */}
         <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -72,26 +80,24 @@ export default async function ReviewPage({ params }: Props) {
 
         {/* 候補日時 */}
         <div className="mb-6">
-          <h2 className="mb-3 text-sm font-medium text-gray-700">
-            候補日時を選択してください
-          </h2>
+          {!isConfirmed && (
+            <h2 className="mb-3 text-sm font-medium text-gray-700">
+              候補日時を選択してください
+            </h2>
+          )}
           {meeting.candidates.length === 0 ? (
             <p className="rounded-lg border border-gray-200 bg-white px-4 py-4 text-sm text-gray-500">
               候補日時がありません。
             </p>
           ) : (
-            <CandidateList candidates={meeting.candidates} />
+            <CandidateList
+              candidates={meeting.candidates}
+              meetingId={meeting.id}
+              isConfirmed={isConfirmed}
+              confirmedIndex={meeting.confirmed_index}
+            />
           )}
         </div>
-
-        {/* 確定ボタン（このTASKでは未接続） */}
-        <button
-          type="button"
-          disabled
-          className="flex h-12 w-full items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          確定する
-        </button>
       </div>
     </div>
   )
