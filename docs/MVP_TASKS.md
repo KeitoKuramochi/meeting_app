@@ -81,7 +81,7 @@ Supabaseで実行するSQLマイグレーションファイル（`supabase/migra
 - [x] `git commit` が1件作成されている
 
 **実装メモ**: `'use client'` + useState でフォーム状態管理。Candidate型を使用。バリデーションは送信時に一括チェック。送信成功時は console.log のみ（Supabase送信は TASK-004 で実装）。
-**commit hash**: —
+**commit hash**: 9e9945e
 
 ---
 
