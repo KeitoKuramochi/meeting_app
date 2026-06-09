@@ -107,7 +107,7 @@ Supabaseで実行するSQLマイグレーションファイル（`supabase/migra
 - [x] `git commit` が1件作成されている
 
 **実装メモ**: `getSupabase()` lazy getter を使いSSRプリレンダー時のクライアント初期化エラーを回避。`isSubmitting` / `submittedUrl` / `submitError` の3状態で送信フローを管理。完了画面は2秒フィードバック付きのURLコピーボタンを含む。
-**commit hash**: —
+**commit hash**: dd8e13d
 
 ---
 
