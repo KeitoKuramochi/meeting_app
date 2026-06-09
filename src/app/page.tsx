@@ -145,7 +145,7 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="mx-auto max-w-lg">
         <h1 className="mb-6 text-xl font-bold text-gray-800">
-          面談リクエストを作成する
+          ミーティングをリクエストする
         </h1>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-6">

@@ -114,7 +114,7 @@ export default function CandidateList({
       </div>
 
       {errorMessage && (
-        <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">
           {errorMessage}
         </p>
       )}
