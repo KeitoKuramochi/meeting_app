@@ -129,7 +129,7 @@ Supabaseで実行するSQLマイグレーションファイル（`supabase/migra
 - [x] `git commit` が1件作成されている
 
 **実装メモ**: Server Component でデータ取得（`getSupabase()` 使用）。存在しないIDの場合はエラーUI＋トップページリンクを表示。候補日のラジオボタン選択は `CandidateList.tsx`（Client Component）に分離。確定ボタンはdisabledで表示のみ。
-**commit hash**: —
+**commit hash**: 8d5cdc7
 
 ---
 
