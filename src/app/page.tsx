@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import type { Candidate } from '@/types/meeting'
+import type { Candidate, MeetingInsert } from '@/types/meeting'
+import { getSupabase } from '@/lib/supabase'
 
 type FormErrors = {
   name?: string
@@ -19,6 +20,10 @@ export default function Home() {
     { id: nextIdRef.current++, date: '', time: '' },
   ])
   const [errors, setErrors] = useState<FormErrors>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submittedUrl, setSubmittedUrl] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   function addCandidate() {
     if (candidates.length < 5) {
@@ -60,20 +65,76 @@ export default function Home() {
     return newErrors
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const newErrors = validate()
     setErrors(newErrors)
 
     if (Object.keys(newErrors).length > 0) return
 
-    const formData = {
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    const insertData: MeetingInsert = {
       student_name: name.trim(),
       purpose: purpose.trim(),
       candidates: candidates.map(({ date, time }) => ({ date, time })),
     }
 
-    console.log('フォームデータ:', formData)
+    const { data, error } = await getSupabase()
+      .from('meetings')
+      .insert([insertData])
+      .select()
+
+    setIsSubmitting(false)
+
+    if (error || !data || data.length === 0) {
+      setSubmitError(
+        error?.message ?? '送信に失敗しました。もう一度お試しください。'
+      )
+      return
+    }
+
+    const id = (data[0] as { id: string }).id
+    const url = `${window.location.origin}/r/${id}`
+    setSubmittedUrl(url)
+  }
+
+  async function handleCopy() {
+    if (!submittedUrl) return
+    await navigator.clipboard.writeText(submittedUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (submittedUrl) {
+    return (
+      <div className="min-h-screen bg-gray-50 px-4 py-8">
+        <div className="mx-auto max-w-lg">
+          <div className="rounded-xl border border-green-200 bg-white p-6 text-center shadow-sm">
+            <div className="mb-4 text-4xl">✅</div>
+            <h1 className="mb-2 text-xl font-bold text-gray-800">
+              リクエストを送りました！
+            </h1>
+            <p className="mb-6 text-sm text-gray-600">
+              このURLを先生に送ってください
+            </p>
+
+            <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-left">
+              <p className="break-all text-sm text-gray-700">{submittedUrl}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="flex h-12 w-full items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
+            >
+              {copied ? 'コピーしました ✓' : 'URLをコピー'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -210,12 +271,20 @@ export default function Home() {
             )}
           </div>
 
+          {/* 送信エラー */}
+          {submitError && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+              {submitError}
+            </p>
+          )}
+
           {/* 送信ボタン */}
           <button
             type="submit"
-            className="flex h-12 w-full items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
+            disabled={isSubmitting}
+            className="flex h-12 w-full items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            リクエストを送る
+            {isSubmitting ? '送信中...' : 'リクエストを送る'}
           </button>
         </form>
       </div>
