@@ -81,23 +81,27 @@ export default function Home() {
       candidates: candidates.map(({ date, time }) => ({ date, time })),
     }
 
-    const { data, error } = await getSupabase()
-      .from('meetings')
-      .insert([insertData])
-      .select()
+    try {
+      const { data, error } = await getSupabase()
+        .from('meetings')
+        .insert([insertData])
+        .select()
 
-    setIsSubmitting(false)
+      if (error || !data || data.length === 0) {
+        setSubmitError(error?.message ?? '送信に失敗しました。もう一度お試しください。')
+        return
+      }
 
-    if (error || !data || data.length === 0) {
+      const id = (data[0] as { id: string }).id
+      const url = `${window.location.origin}/r/${id}`
+      setSubmittedUrl(url)
+    } catch (e) {
       setSubmitError(
-        error?.message ?? '送信に失敗しました。もう一度お試しください。'
+        e instanceof Error ? e.message : '送信に失敗しました。もう一度お試しください。'
       )
-      return
+    } finally {
+      setIsSubmitting(false)
     }
-
-    const id = (data[0] as { id: string }).id
-    const url = `${window.location.origin}/r/${id}`
-    setSubmittedUrl(url)
   }
 
   async function handleCopy() {
