@@ -175,4 +175,4 @@ Supabaseで実行するSQLマイグレーションファイル（`supabase/migra
 - [x] `git commit` が1件作成されている
 
 **実装メモ**: layout.tsx のメタデータ（title・description）を設定し lang を "ja" に変更。page.tsx の h1 テキストを「ミーティングをリクエストする」に修正。CandidateList.tsx のエラーメッセージに role="alert" を追加。全ボタン h-11/h-12（44px以上）・文字サイズ text-sm/text-base（14px/16px）・全ページ px-4 py-8 のパディングを確認済み。
-**commit hash**: —
+**commit hash**: 2f33c62
