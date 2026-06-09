@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Candidate } from '@/types/meeting'
 
 type FormErrors = {
@@ -11,21 +11,21 @@ type FormErrors = {
 
 type CandidateWithId = Candidate & { id: number }
 
-let nextId = 1
-
-function createCandidate(): CandidateWithId {
-  return { id: nextId++, date: '', time: '' }
-}
-
 export default function Home() {
+  const nextIdRef = useRef(1)
   const [name, setName] = useState('')
   const [purpose, setPurpose] = useState('')
-  const [candidates, setCandidates] = useState<CandidateWithId[]>([createCandidate()])
+  const [candidates, setCandidates] = useState<CandidateWithId[]>([
+    { id: nextIdRef.current++, date: '', time: '' },
+  ])
   const [errors, setErrors] = useState<FormErrors>({})
 
   function addCandidate() {
     if (candidates.length < 5) {
-      setCandidates((prev) => [...prev, createCandidate()])
+      setCandidates((prev) => [
+        ...prev,
+        { id: nextIdRef.current++, date: '', time: '' },
+      ])
     }
   }
 
