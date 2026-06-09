@@ -17,28 +17,28 @@
 
 ### TASK-001: Next.js プロジェクト初期セットアップ
 
-**ステータス**: `[ ]`
+**ステータス**: `[x]`
 
 **説明**:
 Next.js 14（App Router）+ TypeScript + Tailwind CSS のプロジェクトを作成する。
 `npm run build` と `npm run dev` が動く状態にする。
 
 **完了条件**:
-- [ ] `npm run build` がエラーなく通る
-- [ ] `npm run dev` でポート3000が起動する
-- [ ] `http://localhost:3000` にアクセスするとページが表示される
-- [ ] TypeScriptエラーが0件
-- [ ] Tailwind CSSが適用されている（背景色やテキスト色が効いている）
-- [ ] `git commit` が1件作成されている
+- [x] `npm run build` がエラーなく通る
+- [x] `npm run dev` でポート3000が起動する
+- [x] `http://localhost:3000` にアクセスするとページが表示される
+- [x] TypeScriptエラーが0件
+- [x] Tailwind CSSが適用されている（背景色やテキスト色が効いている）
+- [x] `git commit` が1件作成されている
 
-**実装メモ**: —
-**commit hash**: —
+**実装メモ**: create-next-app@latest で初期化（Next.js 16.2.7 / Tailwind v4 / TypeScript 5）
+**commit hash**: 16366ed
 
 ---
 
 ### TASK-002: Supabase クライアント設定 + 型定義 + DBマイグレーションファイル
 
-**ステータス**: `[ ]`
+**ステータス**: `[x]`
 
 **説明**:
 Supabaseクライアントの設定ファイルを作る。
@@ -47,14 +47,14 @@ Supabaseで実行するSQLマイグレーションファイル（`supabase/migra
 ※ 環境変数（`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`）は `.env.local` に人間が設定する。GeneratorはSupabase接続の実装だけ行う。
 
 **完了条件**:
-- [ ] `src/lib/supabase.ts` が作成されている
-- [ ] `src/types/meeting.ts` に `Meeting` 型が定義されている（`any` を使わない）
-- [ ] `supabase/migrations/001_create_meetings.sql` が作成されている
-- [ ] SQLに `id`（UUID）, `student_name`, `purpose`, `candidates`（JSONB）, `confirmed_index`（INTEGER nullable）, `confirmed_at`（TIMESTAMPTZ nullable）, `created_at` が含まれている
-- [ ] `npm run build` が通る
-- [ ] `git commit` が1件作成されている
+- [x] `src/lib/supabase.ts` が作成されている
+- [x] `src/types/meeting.ts` に `Meeting` 型が定義されている（`any` を使わない）
+- [x] `supabase/migrations/001_create_meetings.sql` が作成されている
+- [x] SQLに `id`（UUID）, `student_name`, `purpose`, `candidates`（JSONB）, `confirmed_index`（INTEGER nullable）, `confirmed_at`（TIMESTAMPTZ nullable）, `created_at` が含まれている
+- [x] `npm run build` が通る
+- [x] `git commit` が1件作成されている
 
-**実装メモ**: —
+**実装メモ**: @supabase/supabase-js をインストール。環境変数未設定時は空文字列にフォールバックしビルドエラーを回避。
 **commit hash**: —
 
 ---
