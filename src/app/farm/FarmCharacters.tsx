@@ -134,7 +134,7 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
         {/* 吹き出し（常時表示・確定回数） */}
         <div className="relative mb-1 flex items-center justify-center" style={{ width: 56, height: 44 }}>
           <img
-            src="/images/a1.png"
+            src="/images/processed_a1.png"
             alt=""
             aria-hidden="true"
             width={56}
@@ -153,7 +153,7 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
         {/* 王冠 */}
         {isCrown && (
           <img
-            src="/images/a4.png"
+            src="/images/processed_a4.png"
             alt="王冠"
             width={28}
             height={28}
@@ -165,7 +165,7 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
         {/* キラキラ / ハート（確定3以上） */}
         {showKira && !showHeart && (
           <img
-            src="/images/a2.png"
+            src="/images/processed_a2.png"
             alt="キラキラ"
             width={24}
             height={24}
@@ -177,7 +177,7 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
           <>
             {kiraPhase ? (
               <img
-                src="/images/a2.png"
+                src="/images/processed_a2.png"
                 alt="キラキラ"
                 width={24}
                 height={24}
@@ -186,7 +186,7 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
               />
             ) : (
               <img
-                src="/images/a3.png"
+                src="/images/processed_a3.png"
                 alt="ハート"
                 width={24}
                 height={24}
@@ -212,7 +212,7 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
         {/* ZZZ（確定0） */}
         {showZzz && (
           <img
-            src="/images/a5.png"
+            src="/images/processed_a5.png"
             alt="ZZZ"
             width={24}
             height={24}
