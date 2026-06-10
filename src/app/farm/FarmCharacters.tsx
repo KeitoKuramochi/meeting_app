@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation'
 import { FarmContactWithCount } from '@/types/farm'
 
 function getScale(confirmedCount: number): number {
-  if (confirmedCount <= 0) return 0.50
-  if (confirmedCount === 1) return 0.90
-  if (confirmedCount === 2) return 1.00
-  if (confirmedCount === 3) return 1.10
-  if (confirmedCount === 4) return 1.20
-  return 1.30
+  if (confirmedCount <= 0) return 0.60
+  if (confirmedCount === 1) return 0.72
+  if (confirmedCount === 2) return 0.84
+  if (confirmedCount === 3) return 0.96
+  if (confirmedCount === 4) return 1.08
+  return 1.20
 }
 
 function seedRand(index: number, n: number): number {
@@ -197,20 +197,7 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
       </div>
 
       {/* キャラ本体 + オーバーレイ */}
-      <div
-        className="relative"
-        style={{
-          width: 80 * scale,
-          height: 80 * scale,
-          filter: confirmedCount === 0
-            ? 'grayscale(0.8) brightness(0.75)'
-            : confirmedCount === 1
-              ? 'drop-shadow(0 0 6px rgba(251,191,36,0.85)) brightness(1.1)'
-              : confirmedCount >= 3
-                ? 'drop-shadow(0 0 8px rgba(251,191,36,1)) brightness(1.15) saturate(1.2)'
-                : 'drop-shadow(0 0 5px rgba(251,191,36,0.6))',
-        }}
-      >
+      <div className="relative" style={{ width: 80 * scale, height: 80 * scale }}>
         <img
           ref={imgRef}
           src={`/images/processed_${contact.character_number}.png`}
