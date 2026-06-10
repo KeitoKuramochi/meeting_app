@@ -41,10 +41,11 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
     vx: 0, vy: 0, timer: 0,
   })
 
-  const { confirmedCount } = contact
+  const { confirmedCount, pendingCount } = contact
   const isAsleep = confirmedCount === 0
   const baseSpeed = isAsleep ? 0.12 : 0.4 + seedRand(index, 6) * 0.25
-  const showZzz = confirmedCount === 0
+  const showZzz = confirmedCount === 0 && pendingCount === 0
+  const showPending = pendingCount > 0
   const showKira = confirmedCount >= 3
   const showHeart = confirmedCount >= 4
   const scale = getScale(confirmedCount)
@@ -180,7 +181,7 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
       aria-label={`${contact.contact_name}にリクエストを送る`}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onTap(contact.id) }}
     >
-      {/* 吹き出し（確定回数） */}
+      {/* 吹き出し */}
       <div className="relative mb-1 flex items-center justify-center" style={{ width: 56, height: 44 }}>
         <img
           src="/images/processed_a1.png"
@@ -191,8 +192,12 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
           className="absolute inset-0 w-full h-full object-contain"
           draggable={false}
         />
-        <span className="relative z-10 font-bold text-gray-700 leading-none" style={{ fontSize: 13 }}>
-          {confirmedCount}回
+        <span className="relative z-10 font-bold text-gray-700 leading-none text-center" style={{ fontSize: 11 }}>
+          {showPending ? (
+            <>確定待ち<br />{pendingCount}件</>
+          ) : (
+            <>{confirmedCount}回</>
+          )}
         </span>
       </div>
 
@@ -215,6 +220,10 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
         {showZzz && (
           <img src="/images/processed_a5.png" alt="ZZZ" width={20} height={20}
             className="absolute" style={{ top: -8, right: -8 }} draggable={false} />
+        )}
+        {showPending && (
+          <img src="/images/processed_a6.png" alt="確定待ち" width={22} height={22}
+            className="absolute animate-bounce" style={{ top: -10, right: -10 }} draggable={false} />
         )}
         {showKira && !showHeart && (
           <img src="/images/processed_a2.png" alt="キラキラ" width={20} height={20}

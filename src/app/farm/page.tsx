@@ -67,34 +67,46 @@ async function FarmView({ farm }: { farm: Farm }) {
 
   const farmContacts: FarmContact[] = contacts ?? []
 
-  // 各 farm_contact の確定回数を集計
+  // 各 farm_contact の確定回数・確定待ち件数を集計
   let confirmedCounts: ConfirmedCountRow[] = []
+  let pendingCounts: ConfirmedCountRow[] = []
   if (farmContacts.length > 0) {
     const contactIds = farmContacts.map((c) => c.id)
-    const { data: countData } = await supabase
-      .from('meetings')
-      .select('farm_contact_id')
-      .in('farm_contact_id', contactIds)
-      .not('confirmed_index', 'is', null)
-      .returns<{ farm_contact_id: string }[]>()
 
-    // JavaScriptで集計（rpc を使わずシンプルに実装）
-    const countMap: Record<string, number> = {}
-    for (const row of countData ?? []) {
-      if (row.farm_contact_id) {
-        countMap[row.farm_contact_id] = (countMap[row.farm_contact_id] ?? 0) + 1
+    const [{ data: confirmedData }, { data: pendingData }] = await Promise.all([
+      supabase
+        .from('meetings')
+        .select('farm_contact_id')
+        .in('farm_contact_id', contactIds)
+        .not('confirmed_index', 'is', null)
+        .returns<{ farm_contact_id: string }[]>(),
+      supabase
+        .from('meetings')
+        .select('farm_contact_id')
+        .in('farm_contact_id', contactIds)
+        .is('confirmed_index', null)
+        .returns<{ farm_contact_id: string }[]>(),
+    ])
+
+    const toCountRows = (rows: { farm_contact_id: string }[] | null): ConfirmedCountRow[] => {
+      const map: Record<string, number> = {}
+      for (const row of rows ?? []) {
+        if (row.farm_contact_id) {
+          map[row.farm_contact_id] = (map[row.farm_contact_id] ?? 0) + 1
+        }
       }
+      return Object.entries(map).map(([farm_contact_id, count]) => ({ farm_contact_id, count }))
     }
-    confirmedCounts = Object.entries(countMap).map(([farm_contact_id, count]) => ({
-      farm_contact_id,
-      count,
-    }))
+
+    confirmedCounts = toCountRows(confirmedData)
+    pendingCounts = toCountRows(pendingData)
   }
 
   // FarmContactWithCount に変換
   const farmContactsWithCount: FarmContactWithCount[] = farmContacts.map((c) => ({
     ...c,
     confirmedCount: confirmedCounts.find((r) => r.farm_contact_id === c.id)?.count ?? 0,
+    pendingCount: pendingCounts.find((r) => r.farm_contact_id === c.id)?.count ?? 0,
   }))
 
   return (
