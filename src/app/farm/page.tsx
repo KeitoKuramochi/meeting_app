@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { Farm, FarmContact } from '@/types/farm'
+import { Farm, FarmContact, FarmContactWithCount } from '@/types/farm'
 import FarmCharacters from './FarmCharacters'
 import LogoutButton from './LogoutButton'
 
@@ -46,6 +46,12 @@ export default async function FarmPage() {
   return <FarmView farm={upsertedFarm} />
 }
 
+// confirmed_count の集計結果の行型
+type ConfirmedCountRow = {
+  farm_contact_id: string
+  count: number
+}
+
 async function FarmView({ farm }: { farm: Farm }) {
   const supabase = await createSupabaseServerClient()
 
@@ -58,6 +64,36 @@ async function FarmView({ farm }: { farm: Farm }) {
     .returns<FarmContact[]>()
 
   const farmContacts: FarmContact[] = contacts ?? []
+
+  // 各 farm_contact の確定回数を集計
+  let confirmedCounts: ConfirmedCountRow[] = []
+  if (farmContacts.length > 0) {
+    const contactIds = farmContacts.map((c) => c.id)
+    const { data: countData } = await supabase
+      .from('meetings')
+      .select('farm_contact_id')
+      .in('farm_contact_id', contactIds)
+      .not('confirmed_index', 'is', null)
+      .returns<{ farm_contact_id: string }[]>()
+
+    // JavaScriptで集計（rpc を使わずシンプルに実装）
+    const countMap: Record<string, number> = {}
+    for (const row of countData ?? []) {
+      if (row.farm_contact_id) {
+        countMap[row.farm_contact_id] = (countMap[row.farm_contact_id] ?? 0) + 1
+      }
+    }
+    confirmedCounts = Object.entries(countMap).map(([farm_contact_id, count]) => ({
+      farm_contact_id,
+      count,
+    }))
+  }
+
+  // FarmContactWithCount に変換
+  const farmContactsWithCount: FarmContactWithCount[] = farmContacts.map((c) => ({
+    ...c,
+    confirmedCount: confirmedCounts.find((r) => r.farm_contact_id === c.id)?.count ?? 0,
+  }))
 
   return (
     <div className="min-h-screen bg-emerald-50 dark:bg-gray-950 flex flex-col">
@@ -93,7 +129,7 @@ async function FarmView({ farm }: { farm: Farm }) {
 
           {/* キャラクター表示 */}
           <div className="absolute inset-0">
-            <FarmCharacters contacts={farmContacts} />
+            <FarmCharacters contacts={farmContactsWithCount} />
           </div>
         </div>
 

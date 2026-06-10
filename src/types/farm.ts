@@ -13,3 +13,8 @@ export type FarmContact = {
   character_number: number
   created_at: string
 }
+
+// FarmCharacters に渡す、確定回数を含む拡張型
+export type FarmContactWithCount = FarmContact & {
+  confirmedCount: number
+}
