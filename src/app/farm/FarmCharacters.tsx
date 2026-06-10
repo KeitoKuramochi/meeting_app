@@ -121,6 +121,8 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
 
     const onMouseMove = (e: MouseEvent) => updatePos(e.clientX, e.clientY)
     const onTouchMove = (e: TouchEvent) => {
+      if (!isDraggingRef.current) return
+      e.preventDefault()
       if (e.touches[0]) updatePos(e.touches[0].clientX, e.touches[0].clientY)
     }
     const onEnd = () => {
@@ -136,7 +138,7 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
 
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onEnd)
-    document.addEventListener('touchmove', onTouchMove, { passive: true })
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
     document.addEventListener('touchend', onEnd)
     return () => {
       document.removeEventListener('mousemove', onMouseMove)
