@@ -210,7 +210,7 @@ Supabaseで実行するSQLマイグレーションファイル（`supabase/migra
 
 ### TASK-009: DBマイグレーション（farms / farm_contacts + meetings 変更）
 
-**ステータス**: `[ ]`
+**ステータス**: `[x]`
 
 **説明**:
 以下のSQLマイグレーションファイルを作成する（Supabase ダッシュボードで人間が実行する）。
@@ -223,20 +223,23 @@ Supabaseで実行するSQLマイグレーションファイル（`supabase/migra
 > ⚠️ マイグレーション SQL の実行は人間が Supabase ダッシュボードで行う。Generator は SQL ファイルを作成するだけ。
 
 **完了条件**:
-- [ ] `supabase/migrations/002_create_farms.sql` が作成されている
-- [ ] SQL に `farms` テーブルの CREATE 文が含まれている（id, user_id UNIQUE, created_at）
-- [ ] SQL に `farm_contacts` テーブルの CREATE 文が含まれている（id, farm_id FK, contact_name, character_number, created_at）
-- [ ] SQL に `meetings` テーブルへの `farm_contact_id` カラム追加の ALTER TABLE 文が含まれている
-- [ ] SQL に `farms`・`farm_contacts` それぞれの RLS ENABLE と SELECT / INSERT / DELETE ポリシーが含まれている
-- [ ] `src/types/farm.ts` に `Farm` / `FarmContact` 型が定義されている（`any` を使わない）
-- [ ] `npm run build` がエラーなく通る
-- [ ] `git commit` が1件作成されている
+- [x] `supabase/migrations/002_create_farms.sql` が作成されている
+- [x] SQL に `farms` テーブルの CREATE 文が含まれている（id, user_id UNIQUE, created_at）
+- [x] SQL に `farm_contacts` テーブルの CREATE 文が含まれている（id, farm_id FK, contact_name, character_number, created_at）
+- [x] SQL に `meetings` テーブルへの `farm_contact_id` カラム追加の ALTER TABLE 文が含まれている
+- [x] SQL に `farms`・`farm_contacts` それぞれの RLS ENABLE と SELECT / INSERT / DELETE ポリシーが含まれている
+- [x] `src/types/farm.ts` に `Farm` / `FarmContact` 型が定義されている（`any` を使わない）
+- [x] `npm run build` がエラーなく通る
+- [x] `git commit` が1件作成されている
+
+**実装メモ**: SQL ファイルのみ作成（Supabase での実行は人間が行う）。farm_contacts の RLS では subquery で自分の farms.id に属することを確認。any 未使用。
+**commit hash**: 6784176
 
 ---
 
 ### TASK-010: ログイン前トップページ + OAuth ログイン + コールバック処理
 
-**ステータス**: `[ ]`
+**ステータス**: `[x]`
 
 **説明**:
 `/` をログイン前トップページとして作り直す。
@@ -244,14 +247,17 @@ Google / Discord の OAuth ログインボタンを設置し、クリックで S
 `/auth/callback` ルートを作成し、OAuth コールバックを受けてセッションを確立したあと `/farm` へリダイレクトする。
 
 **完了条件**:
-- [ ] `http://localhost:3000` を開くとアプリの説明と「Googleでログイン」「Discordでログイン」ボタンが表示される
-- [ ] ログインボタンをクリックすると OAuth プロバイダーの認証画面へリダイレクトされる（URLが変わる）
-- [ ] `src/app/auth/callback/route.ts` が作成されている
-- [ ] OAuth 認証完了後に `/farm` へリダイレクトされる
-- [ ] ログイン済みのユーザーが `/` にアクセスしたとき `/farm` へリダイレクトされる（ミドルウェア対応）
-- [ ] スマホ幅（375px）でレイアウトが崩れない
-- [ ] `npm run build` がエラーなく通る
-- [ ] `git commit` が1件作成されている
+- [x] `http://localhost:3000` を開くとアプリの説明と「Googleでログイン」「Discordでログイン」ボタンが表示される
+- [x] ログインボタンをクリックすると OAuth プロバイダーの認証画面へリダイレクトされる（URLが変わる）
+- [x] `src/app/auth/callback/route.ts` が作成されている
+- [x] OAuth 認証完了後に `/farm` へリダイレクトされる
+- [x] ログイン済みのユーザーが `/` にアクセスしたとき `/farm` へリダイレクトされる（ミドルウェア対応）
+- [x] スマホ幅（375px）でレイアウトが崩れない
+- [x] `npm run build` がエラーなく通る
+- [x] `git commit` が1件作成されている
+
+**実装メモ**: page.tsx を農園テーマのログイン前トップページに書き換え。OAuthLoginButtons.tsx（'use client'）で signInWithOAuth を実装。auth/callback/route.ts で exchangeCodeForSession → /farm リダイレクト。middleware.ts にログイン済みの / → /farm リダイレクトを追加。
+**commit hash**: 8eef1cb
 
 ---
 

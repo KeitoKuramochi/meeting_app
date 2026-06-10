@@ -10,11 +10,11 @@
 
 | 項目 | 内容 |
 |---|---|
-| 完了 TASK 数 | 8 / 14 |
+| 完了 TASK 数 | 10 / 14 |
 | 最終更新 | 2026-06-10 |
-| 最後に完了した TASK | TASK-008: 認証クライアント設定（@supabase/ssr）+ middleware |
+| 最後に完了した TASK | TASK-010: ログイン前トップページ + OAuth ログイン + コールバック処理 |
 | 現在作業中の TASK | — |
-| 次の TASK | TASK-009: DBマイグレーション（farms / farm_contacts + meetings 変更） |
+| 次の TASK | TASK-011: 農園ページ（/farm）— キャラ静止表示 + ログアウト |
 
 ---
 
@@ -30,6 +30,8 @@
 | TASK-006 | 教員の確定操作 + 確定済み表示 | `[x]` | 062c519 |
 | TASK-007 | UI全体の仕上げ + レスポンシブ確認 | `[x]` | 2f33c62 |
 | TASK-008 | 認証クライアント設定（@supabase/ssr）+ middleware | `[x]` | 1fa2468 |
+| TASK-009 | DBマイグレーション（farms / farm_contacts + meetings 変更） | `[x]` | 6784176 |
+| TASK-010 | ログイン前トップページ + OAuth ログイン + コールバック処理 | `[x]` | 8eef1cb |
 
 ---
 
