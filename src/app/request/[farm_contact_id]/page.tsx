@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import type { FarmContact } from '@/types/farm'
 import { getSupabase } from '@/lib/supabase'
 import RequestForm from './RequestForm'
@@ -27,12 +26,12 @@ export default async function RequestPage({ params }: Props) {
             <p className="text-sm text-gray-500 dark:text-gray-400">
               URLが正しくないか、相手が削除された可能性があります。
             </p>
-            <Link
+            <a
               href="/farm"
               className="mt-4 inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
             >
               農園に戻る
-            </Link>
+            </a>
           </div>
         </div>
       </div>
@@ -52,13 +51,13 @@ export default async function RequestPage({ params }: Props) {
     <div className="min-h-screen bg-emerald-50 dark:bg-gray-950">
       {/* ヘッダー */}
       <header className="flex items-center gap-3 px-4 py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm">
-        <Link
+        <a
           href="/farm"
           className="h-11 w-11 flex items-center justify-center rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
           aria-label="農園に戻る"
         >
           ←
-        </Link>
+        </a>
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-bold text-emerald-800 dark:text-emerald-300 truncate">
             {data.contact_name}さんへリクエスト

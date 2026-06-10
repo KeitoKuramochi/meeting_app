@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import type { Candidate } from '@/types/meeting'
 import { getSupabase } from '@/lib/supabase'
 
@@ -161,12 +160,12 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           {isCopied ? 'コピーしました！' : 'URLをコピー'}
         </button>
 
-        <Link
+        <a
           href="/farm"
           className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-base font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
         >
           農園に戻る
-        </Link>
+        </a>
       </div>
     )
   }
