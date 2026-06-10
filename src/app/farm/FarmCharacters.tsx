@@ -142,84 +142,79 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
             className="absolute inset-0 w-full h-full object-contain"
             draggable={false}
           />
-          <span
-            className="relative z-10 font-bold text-gray-700 leading-none"
-            style={{ fontSize: 13 }}
-          >
+          <span className="relative z-10 font-bold text-gray-700 leading-none" style={{ fontSize: 13 }}>
             {confirmedCount}回
           </span>
         </div>
 
-        {/* 王冠 */}
-        {isCrown && (
-          <img
-            src="/images/processed_a4.png"
-            alt="王冠"
-            width={28}
-            height={28}
-            className="mb-0.5"
-            draggable={false}
-          />
-        )}
-
-        {/* キラキラ / ハート（確定3以上） */}
-        {showKira && !showHeart && (
-          <img
-            src="/images/processed_a2.png"
-            alt="キラキラ"
-            width={24}
-            height={24}
-            className="mb-0.5 animate-pulse"
-            draggable={false}
-          />
-        )}
-        {showHeart && (
-          <>
-            {kiraPhase ? (
-              <img
-                src="/images/processed_a2.png"
-                alt="キラキラ"
-                width={24}
-                height={24}
-                className="mb-0.5"
-                draggable={false}
-              />
-            ) : (
-              <img
-                src="/images/processed_a3.png"
-                alt="ハート"
-                width={24}
-                height={24}
-                className="mb-0.5"
-                draggable={false}
-              />
-            )}
-          </>
-        )}
-
-        {/* キャラ本体 */}
-        <div style={{ transform: `scale(${scale})`, transformOrigin: 'bottom center' }}>
+        {/* キャラ本体 + オーバーレイエフェクト */}
+        <div className="relative" style={{ width: 64 * scale, height: 64 * scale }}>
+          {/* キャラ画像 */}
           <img
             src={`/images/processed_${contact.character_number}.png`}
             alt={contact.contact_name}
             width={64}
             height={64}
-            style={{ imageRendering: 'pixelated' }}
+            style={{
+              imageRendering: 'pixelated',
+              width: '100%',
+              height: '100%',
+            }}
             draggable={false}
           />
-        </div>
 
-        {/* ZZZ（確定0） */}
-        {showZzz && (
-          <img
-            src="/images/processed_a5.png"
-            alt="ZZZ"
-            width={24}
-            height={24}
-            className="mt-0.5"
-            draggable={false}
-          />
-        )}
+          {/* 王冠：頭上中央 */}
+          {isCrown && (
+            <img
+              src="/images/processed_a4.png"
+              alt="王冠"
+              width={24}
+              height={24}
+              className="absolute left-1/2 -translate-x-1/2"
+              style={{ top: -20 }}
+              draggable={false}
+            />
+          )}
+
+          {/* ZZZ：右上 */}
+          {showZzz && (
+            <img
+              src="/images/processed_a5.png"
+              alt="ZZZ"
+              width={20}
+              height={20}
+              className="absolute"
+              style={{ top: -8, right: -8 }}
+              draggable={false}
+            />
+          )}
+
+          {/* キラキラ：左上（確定3以上） */}
+          {showKira && !showHeart && (
+            <img
+              src="/images/processed_a2.png"
+              alt="キラキラ"
+              width={20}
+              height={20}
+              className="absolute animate-pulse"
+              style={{ top: -8, left: -8 }}
+              draggable={false}
+            />
+          )}
+
+          {/* キラキラ＋ハート交互：左上（確定4以上） */}
+          {showHeart && (
+            <img
+              src={kiraPhase ? '/images/processed_a2.png' : '/images/processed_a3.png'}
+              alt={kiraPhase ? 'キラキラ' : 'ハート'}
+              width={20}
+              height={20}
+              className="absolute"
+              style={{ top: -8, left: -8 }}
+              draggable={false}
+            />
+          )}
+        </div>
 
         {/* 名前ラベル */}
         <span className="mt-1 rounded-full bg-white/80 dark:bg-gray-900/80 px-2 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-300 shadow-sm whitespace-nowrap">
