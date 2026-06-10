@@ -176,3 +176,189 @@ Supabaseで実行するSQLマイグレーションファイル（`supabase/migra
 
 **実装メモ**: layout.tsx のメタデータ（title・description）を設定し lang を "ja" に変更。page.tsx の h1 テキストを「ミーティングをリクエストする」に修正。CandidateList.tsx のエラーメッセージに role="alert" を追加。全ボタン h-11/h-12（44px以上）・文字サイズ text-sm/text-base（14px/16px）・全ページ px-4 py-8 のパディングを確認済み。
 **commit hash**: 2f33c62
+
+---
+
+## Phase 2: ファームゲーム拡張（認証あり版）
+
+---
+
+### TASK-008: 認証クライアント設定（@supabase/ssr）+ middleware
+
+**ステータス**: `[x]`
+
+**説明**:
+`@supabase/ssr` パッケージをインストールし、Next.js App Router 対応の Supabase クライアント関数を作成する。
+合わせて Next.js middleware を作成し、`/farm` 以下へのアクセスで未ログイン時は `/` へリダイレクトするセッションチェックを実装する。
+
+> ⚠️ `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` は `.env.local` 設定済みを前提とする。
+
+**完了条件**:
+- [x] `@supabase/ssr` パッケージが `package.json` に追加されている
+- [x] `src/lib/supabase-server.ts` が作成されており `createServerClient` を使った関数が定義されている
+- [x] `src/lib/supabase-browser.ts` が作成されており `createBrowserClient` を使った関数が定義されている
+- [x] `src/middleware.ts` が作成されており `/farm` へのアクセス時に未ログインの場合 `/` へリダイレクトする
+- [x] ログイン済みの状態で `/farm` にアクセスするとリダイレクトされない
+- [x] 既存の `src/lib/supabase.ts` は変更されていない
+- [x] `npm run build` がエラーなく通る
+- [x] `git commit` が1件作成されている
+
+**実装メモ**: @supabase/ssr ^0.12.0 をインストール。supabase-server.ts は async function + cookies() の getAll/setAll パターン。supabase-browser.ts は createBrowserClient でシンプルに実装。middleware.ts は updateSession パターンで getUser() を呼びセッションをリフレッシュ、/farm 以下への未ログインアクセスを / へリダイレクト。Next.js 16 では middleware.ts は非推奨（proxy.ts が新規約）だが SPRINT_CONTRACT の要件に合わせ middleware.ts を採用（build 警告のみでエラーなし）。
+**commit hash**: 1fa2468
+
+---
+
+### TASK-009: DBマイグレーション（farms / farm_contacts + meetings 変更）
+
+**ステータス**: `[ ]`
+
+**説明**:
+以下のSQLマイグレーションファイルを作成する（Supabase ダッシュボードで人間が実行する）。
+
+- `farms` テーブル（id, user_id, created_at）
+- `farm_contacts` テーブル（id, farm_id, contact_name, character_number, created_at）
+- `meetings` テーブルへ `farm_contact_id` カラムを追加
+- 全テーブルの RLS ポリシー（`auth.uid()` ベース）
+
+> ⚠️ マイグレーション SQL の実行は人間が Supabase ダッシュボードで行う。Generator は SQL ファイルを作成するだけ。
+
+**完了条件**:
+- [ ] `supabase/migrations/002_create_farms.sql` が作成されている
+- [ ] SQL に `farms` テーブルの CREATE 文が含まれている（id, user_id UNIQUE, created_at）
+- [ ] SQL に `farm_contacts` テーブルの CREATE 文が含まれている（id, farm_id FK, contact_name, character_number, created_at）
+- [ ] SQL に `meetings` テーブルへの `farm_contact_id` カラム追加の ALTER TABLE 文が含まれている
+- [ ] SQL に `farms`・`farm_contacts` それぞれの RLS ENABLE と SELECT / INSERT / DELETE ポリシーが含まれている
+- [ ] `src/types/farm.ts` に `Farm` / `FarmContact` 型が定義されている（`any` を使わない）
+- [ ] `npm run build` がエラーなく通る
+- [ ] `git commit` が1件作成されている
+
+---
+
+### TASK-010: ログイン前トップページ + OAuth ログイン + コールバック処理
+
+**ステータス**: `[ ]`
+
+**説明**:
+`/` をログイン前トップページとして作り直す。
+Google / Discord の OAuth ログインボタンを設置し、クリックで Supabase OAuth フローを開始する。
+`/auth/callback` ルートを作成し、OAuth コールバックを受けてセッションを確立したあと `/farm` へリダイレクトする。
+
+**完了条件**:
+- [ ] `http://localhost:3000` を開くとアプリの説明と「Googleでログイン」「Discordでログイン」ボタンが表示される
+- [ ] ログインボタンをクリックすると OAuth プロバイダーの認証画面へリダイレクトされる（URLが変わる）
+- [ ] `src/app/auth/callback/route.ts` が作成されている
+- [ ] OAuth 認証完了後に `/farm` へリダイレクトされる
+- [ ] ログイン済みのユーザーが `/` にアクセスしたとき `/farm` へリダイレクトされる（ミドルウェア対応）
+- [ ] スマホ幅（375px）でレイアウトが崩れない
+- [ ] `npm run build` がエラーなく通る
+- [ ] `git commit` が1件作成されている
+
+---
+
+### TASK-011: 農園ページ（/farm）— キャラ静止表示 + ログアウト
+
+**ステータス**: `[ ]`
+
+**説明**:
+`/farm` ページを作成する。ログインユーザーの `farm_contacts` を Supabase から取得し、`nouen.png` を背景としてキャラクター画像（processed_{n}.png）を静止表示する。
+ログアウトボタンも設置する。`/farm/add` への遷移ボタン（「先生を追加」）も設置する。
+
+**完了条件**:
+- [ ] `/farm` にアクセスすると `nouen.png` が背景として表示される
+- [ ] ログインユーザーの `farm_contacts` が0件のとき「まだ誰もいません。先生を追加してみましょう」のようなメッセージが表示される
+- [ ] `farm_contacts` が1件以上のとき `processed_{character_number}.png` が農園上に表示される
+- [ ] 「先生を追加」ボタンが表示されており、クリックすると `/farm/add` へ遷移する
+- [ ] ログアウトボタンが表示されており、クリックするとセッションが削除されて `/` へリダイレクトされる
+- [ ] データ取得中にローディング表示が出る
+- [ ] `npm run build` がエラーなく通る
+- [ ] `git commit` が1件作成されている
+
+---
+
+### TASK-012: 相手追加画面（/farm/add）— キャラ選択 + 名前入力
+
+**ステータス**: `[ ]`
+
+**説明**:
+`/farm/add` ページを作成する。先生の名前を入力し、1〜100 のキャラクターを選んで登録する。
+登録内容は Supabase の `farm_contacts` テーブルに保存され、登録後に `/farm` へリダイレクトする。
+
+**完了条件**:
+- [ ] `/farm/add` にアクセスするとキャラ選択 UI と名前入力欄が表示される
+- [ ] キャラは `processed_1.png` 〜 `processed_100.png` から選べる（サムネイル一覧またはスクロールで選択）
+- [ ] キャラを選択すると選択中のキャラが分かるようにハイライトされる
+- [ ] 名前が空のまま登録ボタンを押すとエラーメッセージが表示される
+- [ ] キャラを選ばずに登録ボタンを押すとエラーメッセージが表示される
+- [ ] 正しく入力して登録ボタンを押すと Supabase の `farm_contacts` にレコードが保存される
+- [ ] 登録後に `/farm` へリダイレクトされる
+- [ ] スマホ幅（375px）でキャラ選択 UI が崩れない
+- [ ] `npm run build` がエラーなく通る
+- [ ] `git commit` が1件作成されている
+
+---
+
+### TASK-013: ミーティングリクエストフォーム（/request/[farm_contact_id]）
+
+**ステータス**: `[ ]`
+
+**説明**:
+`/request/[farm_contact_id]` ページを作成する。
+`farm_contacts` テーブルから相手の名前を取得して表示し、候補日時（3〜5件）を入力して送信すると `meetings` テーブルに `farm_contact_id` 付きで保存される。
+送信完了後に固有URL（`/r/[id]`）を表示する。
+
+**完了条件**:
+- [ ] `/request/[存在するfarm_contact_id]` にアクセスすると相手の名前（先生名）が表示される
+- [ ] 「お名前」「相談内容」入力欄がある
+- [ ] 候補日時の入力欄がある（最低1件〜最大5件）
+- [ ] 名前・相談内容が空の状態で送信するとエラーメッセージが表示される
+- [ ] 候補日が0件の状態で送信するとエラーメッセージが表示される
+- [ ] 正しく入力して送信すると Supabase の `meetings` に `farm_contact_id` 付きでレコードが保存される
+- [ ] 送信完了後に `/r/[id]` 形式のURLが表示され、「URLをコピー」できる
+- [ ] `/request/[存在しないfarm_contact_id]` にアクセスするとエラーメッセージが表示される
+- [ ] スマホ幅（375px）でレイアウトが崩れない
+- [ ] `npm run build` がエラーなく通る
+- [ ] `git commit` が1件作成されている
+
+---
+
+### TASK-014: ランダムウォーク + 成長エフェクト + 特殊エフェクト + キャラタップ遷移
+
+**ステータス**: `[ ]`
+
+**説明**:
+農園ページ（`/farm`）のキャラクターに以下の演出を追加する。
+
+#### 成長・エフェクト定義（1回ごとに少しずつ大きくなる）
+| 確定回数 | サイズ | 常時エフェクト | イベントエフェクト |
+|---|---|---|---|
+| 0回 | scale 0.60 | ZZZ（a5.png）常時 | — |
+| 1回 | scale 0.72 | 王冠（1人でも無条件） | LEVEL UP（a7.png）大きく表示 |
+| 2回 | scale 0.84 | 王冠は最多に移動 | LEVEL UP（a7.png）大きく表示 |
+| 3回 | scale 0.96 | キラキラ（a2.png）点滅 | LEVEL UP（a7.png）大きく表示 |
+| 4回 | scale 1.08 | キラキラ＋ハート（a3.png）交互 | LEVEL UP（a7.png）大きく表示 |
+| 5回以上 | scale 1.20 | キラキラ＋ハート継続 | LEVEL UP（a7.png）大きく表示 |
+
+#### その他エフェクト
+- **吹き出し（a1.png）**: ランダムタイミングで出現・消える。ミーティングを促すセリフをランダム表示（例:「そろそろ話しましょ？」「最近どう？」「相談したいことある？」）
+- **王冠（a4.png）**: 農園内で確定回数が最多のキャラに常時表示。1人だけでも無条件につく
+- **びっくり（a6.png）**: 先生が日程を確定した直後にポップ表示（イベントエフェクト）
+- **LEVEL UP（a7.png）**: 確定されるたびに毎回大きくわかりやすく表示（数秒間）
+
+**完了条件**:
+- [ ] `/farm` を開くとキャラクターが農園内を動き続けている（CSS animation ループ）
+- [ ] 各キャラの動きが互いに異なる（同じ動きにならない）
+- [ ] キャラクターが農園の表示領域外にはみ出さない
+- [ ] 確定回数 0 のキャラが scale 0.7 で ZZZ（a5.png）が表示される
+- [ ] 確定回数 1〜2 のキャラが scale 1.0 で表示される
+- [ ] 確定回数 3 のキャラにキラキラ（a2.png）が点滅表示される
+- [ ] 確定回数 4 以上のキャラにキラキラ＋ハート（a3.png）が交互表示される
+- [ ] 農園内で確定回数最多のキャラに王冠（a4.png）が表示される（1人でも表示）
+- [ ] 吹き出し（a1.png）がランダムタイミングでキャラ頭上に出て消える
+- [ ] 吹き出しの中にミーティングを促すランダムなセリフが表示される
+- [ ] LEVEL UP（a7.png）が確定のたびに大きく表示される
+- [ ] キャラをタップすると `/request/[farm_contact_id]` へ遷移する
+- [ ] スマホ幅（375px）・PC幅（1280px）どちらでもレイアウトが崩れない
+- [ ] ダークモード（`prefers-color-scheme: dark`）でUI全体が正しく表示される
+- [ ] ボタンのタップ領域が44px以上
+- [ ] `npm run build` がエラーなく通る
+- [ ] `git commit` が1件作成されている
