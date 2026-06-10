@@ -195,13 +195,13 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
       </div>
 
       {/* キャラ本体 + オーバーレイ */}
-      <div className="relative" style={{ width: 64 * scale, height: 64 * scale }}>
+      <div className="relative" style={{ width: 80 * scale, height: 80 * scale }}>
         <img
           ref={imgRef}
           src={`/images/processed_${contact.character_number}.png`}
           alt={contact.contact_name}
-          width={64}
-          height={64}
+          width={80}
+          height={80}
           style={{ imageRendering: 'pixelated', width: '100%', height: '100%' }}
           draggable={false}
         />
