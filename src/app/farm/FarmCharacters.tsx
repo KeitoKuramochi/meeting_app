@@ -1,20 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FarmContactWithCount } from '@/types/farm'
-
-// ===== 定数 =====
-
-const SPEECHES = [
-  'そろそろ話しましょ？',
-  '最近どう？',
-  '相談したいことある？',
-  'お時間ありますか？',
-  '会いましょ！',
-  'ちょっといいですか？',
-  '今度話しませんか？',
-]
 
 /** 確定回数 → CSS scale */
 function getScale(confirmedCount: number): number {
@@ -80,42 +68,6 @@ function buildWalkParams(index: number, total: number): WalkParams {
   }
 }
 
-// ===== 吹き出しコンポーネント =====
-
-type BubbleState = {
-  visible: boolean
-  text: string
-}
-
-function useBubble(index: number): BubbleState {
-  const [state, setState] = useState<BubbleState>({ visible: false, text: '' })
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    // Hydration 後にのみランダムタイマーを開始
-    const schedule = () => {
-      const wait = 5000 + Math.random() * 10000  // 5〜15 秒後
-      timerRef.current = setTimeout(() => {
-        const text = SPEECHES[Math.floor(Math.random() * SPEECHES.length)]
-        setState({ visible: true, text })
-        timerRef.current = setTimeout(() => {
-          setState({ visible: false, text: '' })
-          schedule()
-        }, 3000)
-      }, wait)
-    }
-
-    // 各キャラの初回出現タイミングをずらす
-    const initial = setTimeout(() => schedule(), index * 800)
-
-    return () => {
-      clearTimeout(initial)
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [index])
-
-  return state
-}
 
 // ===== 単一キャラコンポーネント =====
 
@@ -128,7 +80,6 @@ type CharacterProps = {
 }
 
 function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProps) {
-  const bubble = useBubble(index)
   const { confirmedCount } = contact
   const scale = getScale(confirmedCount)
 
@@ -180,35 +131,24 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
           if (e.key === 'Enter' || e.key === ' ') onTap(contact.id)
         }}
       >
-        {/* 吹き出し */}
-        {bubble.visible && (
-          <div className="relative mb-1 flex flex-col items-center" style={{ minWidth: 80 }}>
-            <div
-              className="relative rounded-xl bg-white/95 dark:bg-gray-800/95 px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 shadow-md whitespace-nowrap border border-gray-200 dark:border-gray-600"
-              style={{ fontSize: 11 }}
-            >
-              {bubble.text}
-              {/* しっぽ */}
-              <span
-                className="absolute left-1/2 -bottom-[6px] -translate-x-1/2 w-0 h-0"
-                style={{
-                  borderLeft: '5px solid transparent',
-                  borderRight: '5px solid transparent',
-                  borderTop: '6px solid rgba(255,255,255,0.95)',
-                }}
-              />
-            </div>
-            <img
-              src="/images/a1.png"
-              alt=""
-              aria-hidden="true"
-              width={24}
-              height={24}
-              className="mt-0.5 opacity-0 absolute"
-              draggable={false}
-            />
-          </div>
-        )}
+        {/* 吹き出し（常時表示・確定回数） */}
+        <div className="relative mb-1 flex items-center justify-center" style={{ width: 56, height: 44 }}>
+          <img
+            src="/images/a1.png"
+            alt=""
+            aria-hidden="true"
+            width={56}
+            height={44}
+            className="absolute inset-0 w-full h-full object-contain"
+            draggable={false}
+          />
+          <span
+            className="relative z-10 font-bold text-gray-700 leading-none"
+            style={{ fontSize: 13 }}
+          >
+            {confirmedCount}回
+          </span>
+        </div>
 
         {/* 王冠 */}
         {isCrown && (
