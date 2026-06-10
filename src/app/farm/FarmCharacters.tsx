@@ -46,7 +46,7 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
 
   const { confirmedCount } = contact
   const isAsleep = confirmedCount === 0
-  const baseSpeed = isAsleep ? 0.35 : 1.2 + seedRand(index, 6) * 0.8
+  const baseSpeed = isAsleep ? 0.12 : 0.4 + seedRand(index, 6) * 0.25
 
   const showZzz = confirmedCount === 0
   const showKira = confirmedCount >= 3
