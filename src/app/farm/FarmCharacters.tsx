@@ -38,36 +38,26 @@ function buildWalkParams(index: number, total: number, isAsleep: boolean): WalkP
     return x - Math.floor(x)
   }
 
-  const cols = Math.max(1, Math.ceil(Math.sqrt(total)))
-  const rows = Math.max(1, Math.ceil(total / cols))
-  const col = index % cols
-  const row = Math.floor(index / cols)
-
-  const marginX = 10
-  const marginY = 8
-  const usableW = 100 - marginX * 2
-  const usableH = 100 - marginY * 2
-
-  const baseLeft = cols > 1 ? marginX + (col / (cols - 1)) * usableW : 50
-  const baseBottom = rows > 1 ? marginY + (row / (rows - 1)) * usableH : 20
+  // 初期位置：中心付近に集める（35〜65%）
+  const baseLeft = 35 + seed(4) * 30
+  // 縦：下寄せ中心（15〜45%）
+  const baseBottom = 15 + seed(5) * 30
 
   if (isAsleep) {
-    // 眠り：ふらふらゆっくり大きく動く（寝ながら歩いてる感）
     return {
       duration: 5 + seed(0) * 4,     // 5〜9秒
       delay: -(seed(1) * 8),
-      moveX: (seed(2) - 0.5) * 60,   // ±30%
+      moveX: (seed(2) - 0.5) * 80,   // ±40%（端まで届く）
       moveY: (seed(3) - 0.5) * 24,   // ±12%
       initLeft: baseLeft,
       initBottom: baseBottom,
     }
   }
 
-  // 起きてる：速く・大きく動く
   return {
-    duration: 2 + seed(0) * 2,       // 2〜4秒（かなり速い）
+    duration: 2 + seed(0) * 2,       // 2〜4秒
     delay: -(seed(1) * 4),
-    moveX: (seed(2) - 0.5) * 70,     // ±35%（広い範囲）
+    moveX: (seed(2) - 0.5) * 90,     // ±45%（画面端まで届く）
     moveY: (seed(3) - 0.5) * 28,     // ±14%
     initLeft: baseLeft,
     initBottom: baseBottom,
