@@ -27,7 +27,7 @@ export default function TopPage() {
             のうえんミーティング
           </h1>
           <p className="mt-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
-            先生との日程調整を、もっと楽しく。
+            だれとでも、日程調整をもっと楽しく。
           </p>
         </div>
 
@@ -36,11 +36,11 @@ export default function TopPage() {
           <ul className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
             <li className="flex items-start gap-2">
               <span className="text-emerald-500 mt-0.5 shrink-0">🌱</span>
-              <span>先生をキャラクターとして農園に登録できる</span>
+              <span>相手をキャラクターとして農園に登録できる</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-emerald-500 mt-0.5 shrink-0">📅</span>
-              <span>候補日を送るだけで先生がワンクリックで確定</span>
+              <span>候補日を送るだけで相手がワンクリックで確定</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-emerald-500 mt-0.5 shrink-0">🏆</span>

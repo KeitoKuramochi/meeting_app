@@ -107,7 +107,7 @@ async function FarmView({ farm }: { farm: Farm }) {
             href="/farm/add"
             className="h-11 px-4 flex items-center justify-center rounded-xl bg-emerald-600 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors"
           >
-            先生を追加
+            相手を追加
           </Link>
           <LogoutButton />
         </div>
@@ -136,7 +136,7 @@ async function FarmView({ farm }: { farm: Farm }) {
         {/* キャラ数の表示 */}
         {farmContacts.length > 0 && (
           <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
-            {farmContacts.length} 人の先生が農園にいます
+            {farmContacts.length} 人が農園にいます
           </p>
         )}
       </main>

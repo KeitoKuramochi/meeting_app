@@ -43,7 +43,7 @@ export default async function RequestPage({ params }: Props) {
             <span className="font-semibold text-emerald-700 dark:text-emerald-400">
               {data.contact_name}
             </span>{' '}
-            先生への候補日を送信します
+            への候補日を送信します
           </p>
         </div>
         <RequestForm

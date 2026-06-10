@@ -77,14 +77,14 @@ export default function AddContactForm({ farmId }: Props) {
           htmlFor="contact-name"
           className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
         >
-          先生の名前
+          相手の名前
         </label>
         <input
           id="contact-name"
           type="text"
           value={contactName}
           onChange={(e) => setContactName(e.target.value)}
-          placeholder="例：田中先生"
+          placeholder="例：田中さん、田中教授"
           className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 h-12 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
           autoComplete="off"
         />

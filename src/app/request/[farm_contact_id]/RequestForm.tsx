@@ -134,7 +134,7 @@ export default function RequestForm({ farmContactId, contactName }: Props) {
             リクエストを送りました！
           </h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            このURLを{contactName}先生に共有してください
+            このURLを{contactName}さんに共有してください
           </p>
         </div>
 

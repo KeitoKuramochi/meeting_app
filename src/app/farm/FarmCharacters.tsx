@@ -32,8 +32,7 @@ type WalkParams = {
 }
 
 /** インデックスから deterministic なシードで生成（SSR/Client で同一値） */
-function buildWalkParams(index: number, total: number): WalkParams {
-  // 擬似乱数（seedベース、Math.random は使わない）
+function buildWalkParams(index: number, total: number, isAsleep: boolean): WalkParams {
   const seed = (n: number) => {
     const x = Math.sin(index * 127.1 + n * 311.7) * 43758.5453123
     return x - Math.floor(x)
@@ -44,7 +43,7 @@ function buildWalkParams(index: number, total: number): WalkParams {
   const col = index % cols
   const row = Math.floor(index / cols)
 
-  const marginX = 12
+  const marginX = 10
   const marginY = 8
   const usableW = 100 - marginX * 2
   const usableH = 100 - marginY * 2
@@ -52,17 +51,24 @@ function buildWalkParams(index: number, total: number): WalkParams {
   const baseLeft = cols > 1 ? marginX + (col / (cols - 1)) * usableW : 50
   const baseBottom = rows > 1 ? marginY + (row / (rows - 1)) * usableH : 20
 
-  // 各キャラで異なる動き（seed を使って散らす）
-  const duration = 6 + seed(0) * 6        // 6〜12秒
-  const delay = -(seed(1) * duration)      // ランダム位相オフセット
-  const moveX = (seed(2) - 0.5) * 16      // ±8%
-  const moveY = (seed(3) - 0.5) * 10      // ±5%
+  if (isAsleep) {
+    // 眠り：ほぼ動かない、ゆっくり微揺れ
+    return {
+      duration: 4 + seed(0) * 2,
+      delay: -(seed(1) * 4),
+      moveX: (seed(2) - 0.5) * 2,   // ±1%
+      moveY: (seed(3) - 0.5) * 1,   // ±0.5%
+      initLeft: baseLeft,
+      initBottom: baseBottom,
+    }
+  }
 
+  // 起きてる：速く・大きく動く
   return {
-    duration,
-    delay,
-    moveX,
-    moveY,
+    duration: 3 + seed(0) * 3,       // 3〜6秒（速め）
+    delay: -(seed(1) * 6),
+    moveX: (seed(2) - 0.5) * 50,     // ±25%（広い範囲）
+    moveY: (seed(3) - 0.5) * 20,     // ±10%
     initLeft: baseLeft,
     initBottom: baseBottom,
   }
@@ -97,8 +103,12 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
     return () => clearInterval(id)
   }, [showHeart])
 
-  // CSS keyframes animation 名（各キャラ固有）
+  const isAsleep = confirmedCount === 0
   const animName = `walk-${index}`
+  const flipName = `flip-${index}`
+  // moveX > 0 → 最初は右向き（scaleX=1）、折り返し時に左向き（scaleX=-1）
+  const faceRight = moveX >= 0 ? 1 : -1
+  const faceLeft = -faceRight
 
   const styleTag = `
     @keyframes ${animName} {
@@ -107,6 +117,13 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
       50%  { transform: translateX(-50%) translate(${moveX}%, ${moveY}%); }
       75%  { transform: translateX(-50%) translate(${moveX * 0.3}%, ${moveY * 0.5}%); }
       100% { transform: translateX(-50%) translate(0%, 0%); }
+    }
+    @keyframes ${flipName} {
+      0%        { transform: scaleX(${faceRight}); }
+      49.9%     { transform: scaleX(${faceRight}); }
+      50%       { transform: scaleX(${faceLeft}); }
+      99.9%     { transform: scaleX(${faceLeft}); }
+      100%      { transform: scaleX(${faceRight}); }
     }
   `
 
@@ -149,7 +166,7 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
 
         {/* キャラ本体 + オーバーレイエフェクト */}
         <div className="relative" style={{ width: 64 * scale, height: 64 * scale }}>
-          {/* キャラ画像 */}
+          {/* キャラ画像（左右反転アニメーション） */}
           <img
             src={`/images/processed_${contact.character_number}.png`}
             alt={contact.contact_name}
@@ -159,6 +176,9 @@ function Character({ contact, index, isCrown, walkParams, onTap }: CharacterProp
               imageRendering: 'pixelated',
               width: '100%',
               height: '100%',
+              animation: isAsleep
+                ? 'none'
+                : `${flipName} ${duration}s ${delay}s step-start infinite`,
             }}
             draggable={false}
           />
@@ -246,7 +266,7 @@ export default function FarmCharacters({ contacts }: Props) {
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="rounded-2xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-6 py-4 text-center shadow-md">
           <p className="text-base font-medium text-gray-700 dark:text-gray-300">
-            まだ誰もいません。先生を追加しましょう！
+            まだ誰もいません。相手を追加しましょう！
           </p>
         </div>
       </div>
@@ -260,7 +280,7 @@ export default function FarmCharacters({ contacts }: Props) {
   return (
     <>
       {contacts.map((contact, index) => {
-        const walkParams = buildWalkParams(index, contacts.length)
+        const walkParams = buildWalkParams(index, contacts.length, contact.confirmedCount === 0)
         return (
           <Character
             key={contact.id}

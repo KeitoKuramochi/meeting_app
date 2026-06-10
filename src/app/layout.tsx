@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ミーティング調整 | 先生とのミーティングをかんたんに",
-  description: "候補日を送るだけで先生がワンクリックで確定できる日程調整アプリ",
+  title: "ミーティング調整 | だれとでもミーティング調整をかんたんに",
+  description: "候補日を送るだけで相手がワンクリックで確定できる日程調整アプリ",
 };
 
 export default function RootLayout({

@@ -56,7 +56,7 @@ export default async function FarmAddPage() {
         >
           ←
         </Link>
-        <h1 className="text-lg font-bold text-emerald-800 dark:text-emerald-300">先生を追加</h1>
+        <h1 className="text-lg font-bold text-emerald-800 dark:text-emerald-300">相手を追加</h1>
       </header>
 
       {/* フォームエリア */}
