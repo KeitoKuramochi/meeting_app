@@ -18,13 +18,7 @@ function seedRand(index: number, n: number): number {
   return x - Math.floor(x)
 }
 
-type WalkState = {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  timer: number
-}
+type WalkState = { x: number; y: number; vx: number; vy: number; timer: number }
 
 type CharacterProps = {
   contact: FarmContactWithCount
@@ -36,18 +30,20 @@ type CharacterProps = {
 function Character({ contact, index, isCrown, onTap }: CharacterProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
+  const rafRef = useRef<number>(0)
+  const isDraggingRef = useRef(false)
+  const hasMovedRef = useRef(false)
+  const [grabbing, setGrabbing] = useState(false)
+
   const stateRef = useRef<WalkState>({
     x: 35 + seedRand(index, 2) * 30,
     y: 15 + seedRand(index, 3) * 30,
-    vx: 0,
-    vy: 0,
-    timer: 0,
+    vx: 0, vy: 0, timer: 0,
   })
 
   const { confirmedCount } = contact
   const isAsleep = confirmedCount === 0
   const baseSpeed = isAsleep ? 0.12 : 0.4 + seedRand(index, 6) * 0.25
-
   const showZzz = confirmedCount === 0
   const showKira = confirmedCount >= 3
   const showHeart = confirmedCount >= 4
@@ -60,23 +56,13 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
     return () => clearInterval(id)
   }, [showHeart])
 
-  useEffect(() => {
-    const s = stateRef.current
-    const angle = seedRand(index, 1) * Math.PI * 2
-    s.vx = Math.cos(angle) * baseSpeed
-    s.vy = Math.sin(angle) * baseSpeed * 0.35
-    s.timer = Math.floor(80 + seedRand(index, 4) * 100)
-
-    // Set initial DOM position immediately
-    if (containerRef.current) {
-      containerRef.current.style.left = `${s.x}%`
-      containerRef.current.style.bottom = `${s.y}%`
-    }
-
-    let rafId: number
+  const startAnimation = useCallback(() => {
+    cancelAnimationFrame(rafRef.current)
     const tick = () => {
+      if (isDraggingRef.current) { rafRef.current = requestAnimationFrame(tick); return }
       const el = containerRef.current
       const img = imgRef.current
+      const s = stateRef.current
 
       s.x += s.vx
       s.y += s.vy
@@ -94,26 +80,99 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
         s.timer = Math.floor(60 + Math.random() * 120)
       }
 
-      if (el) {
-        el.style.left   = `${s.x}%`
-        el.style.bottom = `${s.y}%`
-      }
-      if (img) {
-        img.style.transform = s.vx < 0 ? 'scaleX(-1)' : 'scaleX(1)'
-      }
+      if (el) { el.style.left = `${s.x}%`; el.style.bottom = `${s.y}%` }
+      if (img) img.style.transform = s.vx < 0 ? 'scaleX(-1)' : 'scaleX(1)'
 
-      rafId = requestAnimationFrame(tick)
+      rafRef.current = requestAnimationFrame(tick)
     }
-    rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
-  }, [index, baseSpeed])
+    rafRef.current = requestAnimationFrame(tick)
+  }, [baseSpeed])
+
+  useEffect(() => {
+    const s = stateRef.current
+    const angle = seedRand(index, 1) * Math.PI * 2
+    s.vx = Math.cos(angle) * baseSpeed
+    s.vy = Math.sin(angle) * baseSpeed * 0.35
+    s.timer = Math.floor(80 + seedRand(index, 4) * 100)
+    if (containerRef.current) {
+      containerRef.current.style.left = `${s.x}%`
+      containerRef.current.style.bottom = `${s.y}%`
+    }
+    startAnimation()
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [index, baseSpeed, startAnimation])
+
+  // ドラッグ中のマウス/タッチ移動をdocumentで監視
+  useEffect(() => {
+    const updatePos = (clientX: number, clientY: number) => {
+      if (!isDraggingRef.current) return
+      hasMovedRef.current = true
+      const el = containerRef.current
+      const parent = el?.parentElement
+      if (!el || !parent) return
+      const rect = parent.getBoundingClientRect()
+      const x = Math.max(2, Math.min(96, ((clientX - rect.left) / rect.width) * 100))
+      const y = Math.max(3, Math.min(72, ((rect.bottom - clientY) / rect.height) * 100))
+      stateRef.current.x = x
+      stateRef.current.y = y
+      el.style.left = `${x}%`
+      el.style.bottom = `${y}%`
+    }
+
+    const onMouseMove = (e: MouseEvent) => updatePos(e.clientX, e.clientY)
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches[0]) updatePos(e.touches[0].clientX, e.touches[0].clientY)
+    }
+    const onEnd = () => {
+      if (!isDraggingRef.current) return
+      isDraggingRef.current = false
+      setGrabbing(false)
+      const a = Math.random() * Math.PI * 2
+      stateRef.current.vx = Math.cos(a) * baseSpeed
+      stateRef.current.vy = Math.sin(a) * baseSpeed * 0.35
+      stateRef.current.timer = Math.floor(60 + Math.random() * 120)
+      startAnimation()
+    }
+
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onEnd)
+    document.addEventListener('touchmove', onTouchMove, { passive: true })
+    document.addEventListener('touchend', onEnd)
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onEnd)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onEnd)
+    }
+  }, [baseSpeed, startAnimation])
+
+  const handlePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    isDraggingRef.current = true
+    hasMovedRef.current = false
+    setGrabbing(true)
+    stateRef.current.vx = 0
+    stateRef.current.vy = 0
+  }, [])
+
+  const handleClick = useCallback(() => {
+    if (hasMovedRef.current) return
+    onTap(contact.id)
+  }, [contact.id, onTap])
 
   return (
     <div
       ref={containerRef}
-      className="absolute flex flex-col items-center cursor-pointer select-none"
-      style={{ left: `${stateRef.current.x}%`, bottom: `${stateRef.current.y}%` }}
-      onClick={() => onTap(contact.id)}
+      className="absolute flex flex-col items-center select-none"
+      style={{
+        left: `${stateRef.current.x}%`,
+        bottom: `${stateRef.current.y}%`,
+        cursor: grabbing ? 'grabbing' : 'grab',
+        zIndex: grabbing ? 50 : 1,
+      }}
+      onMouseDown={handlePointerDown}
+      onTouchStart={handlePointerDown}
+      onClick={handleClick}
       role="button"
       tabIndex={0}
       aria-label={`${contact.contact_name}にリクエストを送る`}
@@ -147,55 +206,24 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
           draggable={false}
         />
 
-        {/* 王冠：頭上中央 */}
         {isCrown && (
-          <img
-            src="/images/processed_a4.png"
-            alt="王冠"
-            width={24}
-            height={24}
-            className="absolute left-1/2 -translate-x-1/2"
-            style={{ top: -20 }}
-            draggable={false}
-          />
+          <img src="/images/processed_a4.png" alt="王冠" width={24} height={24}
+            className="absolute left-1/2 -translate-x-1/2" style={{ top: -20 }} draggable={false} />
         )}
-
-        {/* ZZZ：右上 */}
         {showZzz && (
-          <img
-            src="/images/processed_a5.png"
-            alt="ZZZ"
-            width={20}
-            height={20}
-            className="absolute"
-            style={{ top: -8, right: -8 }}
-            draggable={false}
-          />
+          <img src="/images/processed_a5.png" alt="ZZZ" width={20} height={20}
+            className="absolute" style={{ top: -8, right: -8 }} draggable={false} />
         )}
-
-        {/* キラキラ：左上（確定3） */}
         {showKira && !showHeart && (
-          <img
-            src="/images/processed_a2.png"
-            alt="キラキラ"
-            width={20}
-            height={20}
-            className="absolute animate-pulse"
-            style={{ top: -8, left: -8 }}
-            draggable={false}
-          />
+          <img src="/images/processed_a2.png" alt="キラキラ" width={20} height={20}
+            className="absolute animate-pulse" style={{ top: -8, left: -8 }} draggable={false} />
         )}
-
-        {/* キラキラ＋ハート交互（確定4以上） */}
         {showHeart && (
           <img
             src={kiraPhase ? '/images/processed_a2.png' : '/images/processed_a3.png'}
             alt={kiraPhase ? 'キラキラ' : 'ハート'}
-            width={20}
-            height={20}
-            className="absolute"
-            style={{ top: -8, left: -8 }}
-            draggable={false}
+            width={20} height={20}
+            className="absolute" style={{ top: -8, left: -8 }} draggable={false}
           />
         )}
       </div>
