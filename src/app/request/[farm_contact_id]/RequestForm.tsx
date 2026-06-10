@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import type { Candidate } from '@/types/meeting'
 import { getSupabase } from '@/lib/supabase'
 
 type Props = {
   farmContactId: string
   contactName: string
+  confirmedCount: number
 }
 
 type FormErrors = {
@@ -23,7 +25,7 @@ function createEmptyCandidate(): Candidate {
   return { date: '', time: '' }
 }
 
-export default function RequestForm({ farmContactId, contactName }: Props) {
+export default function RequestForm({ farmContactId, contactName, confirmedCount }: Props) {
   const [studentName, setStudentName] = useState('')
   const [purpose, setPurpose] = useState('')
   const [candidates, setCandidates] = useState<Candidate[]>([createEmptyCandidate()])
@@ -124,24 +126,31 @@ export default function RequestForm({ farmContactId, contactName }: Props) {
 
   // 完了画面
   if (submittedUrl) {
+    const nextCount = confirmedCount + 1
     return (
-      <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
-        <div className="mb-6 text-center">
-          <div className="mb-3 text-5xl" role="img" aria-label="完了">
-            🎉
-          </div>
+      <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
+        <div className="text-center">
+          <div className="mb-2 text-5xl" role="img" aria-label="完了">🎉</div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
             リクエストを送りました！
           </h2>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            このURLを{contactName}さんに共有してください
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {confirmedCount === 0
+              ? `${contactName}さんとはじめてのリクエストです`
+              : `${contactName}さんとは今まで${confirmedCount}回確定済み。今回が${nextCount}回目のリクエストです`}
           </p>
         </div>
 
-        <div className="mb-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
-          <p className="break-all text-sm font-mono text-gray-700 dark:text-gray-300">
-            {submittedUrl}
+        {/* URLエリア */}
+        <div>
+          <p className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            このURLを{contactName}さんに送ってください
           </p>
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
+            <p className="break-all text-sm font-mono text-gray-700 dark:text-gray-300">
+              {submittedUrl}
+            </p>
+          </div>
         </div>
 
         <button
@@ -151,6 +160,13 @@ export default function RequestForm({ farmContactId, contactName }: Props) {
         >
           {isCopied ? 'コピーしました！' : 'URLをコピー'}
         </button>
+
+        <Link
+          href="/farm"
+          className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-base font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+        >
+          農園に戻る
+        </Link>
       </div>
     )
   }

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import type { FarmContact } from '@/types/farm'
 import { getSupabase } from '@/lib/supabase'
 import RequestForm from './RequestForm'
@@ -26,31 +27,61 @@ export default async function RequestPage({ params }: Props) {
             <p className="text-sm text-gray-500 dark:text-gray-400">
               URLが正しくないか、相手が削除された可能性があります。
             </p>
+            <Link
+              href="/farm"
+              className="mt-4 inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+            >
+              農園に戻る
+            </Link>
           </div>
         </div>
       </div>
     )
   }
 
+  // この相手との確定済みミーティング回数を取得
+  const { data: confirmedRows } = await getSupabase()
+    .from('meetings')
+    .select('id')
+    .eq('farm_contact_id', farm_contact_id)
+    .not('confirmed_index', 'is', null)
+
+  const confirmedCount = confirmedRows?.length ?? 0
+
   return (
-    <div className="min-h-screen bg-emerald-50 dark:bg-gray-950 px-4 py-8">
-      <div className="mx-auto max-w-lg">
-        <div className="mb-6 text-center">
-          <h1 className="text-xl font-bold text-emerald-800 dark:text-emerald-300">
-            ミーティングをリクエスト
+    <div className="min-h-screen bg-emerald-50 dark:bg-gray-950">
+      {/* ヘッダー */}
+      <header className="flex items-center gap-3 px-4 py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm">
+        <Link
+          href="/farm"
+          className="h-11 w-11 flex items-center justify-center rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+          aria-label="農園に戻る"
+        >
+          ←
+        </Link>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base font-bold text-emerald-800 dark:text-emerald-300 truncate">
+            {data.contact_name}さんへリクエスト
           </h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-              {data.contact_name}
-            </span>{' '}
-            への候補日を送信します
-          </p>
+          {confirmedCount > 0 ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              これまで{confirmedCount}回ミーティングが確定しています
+            </p>
+          ) : (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              はじめてのリクエストです
+            </p>
+          )}
         </div>
+      </header>
+
+      <main className="max-w-lg mx-auto px-4 py-8">
         <RequestForm
           farmContactId={farm_contact_id}
           contactName={data.contact_name}
+          confirmedCount={confirmedCount}
         />
-      </div>
+      </main>
     </div>
   )
 }
