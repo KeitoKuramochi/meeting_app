@@ -263,7 +263,7 @@ Google / Discord の OAuth ログインボタンを設置し、クリックで S
 
 ### TASK-011: 農園ページ（/farm）— キャラ静止表示 + ログアウト
 
-**ステータス**: `[ ]`
+**ステータス**: `[~]`
 
 **説明**:
 `/farm` ページを作成する。ログインユーザーの `farm_contacts` を Supabase から取得し、`nouen.png` を背景としてキャラクター画像（processed_{n}.png）を静止表示する。
