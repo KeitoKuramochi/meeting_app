@@ -52,12 +52,12 @@ function buildWalkParams(index: number, total: number, isAsleep: boolean): WalkP
   const baseBottom = rows > 1 ? marginY + (row / (rows - 1)) * usableH : 20
 
   if (isAsleep) {
-    // 眠り：ほぼ動かない、ゆっくり微揺れ
+    // 眠り：ふらふらゆっくり大きく動く（寝ながら歩いてる感）
     return {
-      duration: 4 + seed(0) * 2,
-      delay: -(seed(1) * 4),
-      moveX: (seed(2) - 0.5) * 2,   // ±1%
-      moveY: (seed(3) - 0.5) * 1,   // ±0.5%
+      duration: 5 + seed(0) * 4,     // 5〜9秒
+      delay: -(seed(1) * 8),
+      moveX: (seed(2) - 0.5) * 60,   // ±30%
+      moveY: (seed(3) - 0.5) * 24,   // ±12%
       initLeft: baseLeft,
       initBottom: baseBottom,
     }
@@ -65,10 +65,10 @@ function buildWalkParams(index: number, total: number, isAsleep: boolean): WalkP
 
   // 起きてる：速く・大きく動く
   return {
-    duration: 3 + seed(0) * 3,       // 3〜6秒（速め）
-    delay: -(seed(1) * 6),
-    moveX: (seed(2) - 0.5) * 50,     // ±25%（広い範囲）
-    moveY: (seed(3) - 0.5) * 20,     // ±10%
+    duration: 2 + seed(0) * 2,       // 2〜4秒（かなり速い）
+    delay: -(seed(1) * 4),
+    moveX: (seed(2) - 0.5) * 70,     // ±35%（広い範囲）
+    moveY: (seed(3) - 0.5) * 28,     // ±14%
     initLeft: baseLeft,
     initBottom: baseBottom,
   }
