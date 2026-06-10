@@ -105,7 +105,7 @@ export default function AddContactForm({ farmId }: Props) {
             キャラクター #{selectedCharacter} を選択中
           </p>
         )}
-        <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-80 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-800">
+        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-3 max-h-96 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-800">
           {characterNumbers.map((num) => {
             const isSelected = selectedCharacter === num
             return (
@@ -117,7 +117,7 @@ export default function AddContactForm({ farmId }: Props) {
                   setCharacterError('')
                 }}
                 className={[
-                  'flex flex-col items-center justify-center rounded-lg p-1 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400',
+                  'flex flex-col items-center justify-center rounded-lg p-2 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400',
                   'min-h-[44px]',
                   isSelected
                     ? 'ring-2 ring-emerald-500 bg-emerald-100 dark:bg-emerald-900/50 scale-105'
@@ -129,12 +129,12 @@ export default function AddContactForm({ farmId }: Props) {
                 <img
                   src={`/images/processed_${num}.png`}
                   alt={`キャラクター ${num}`}
-                  width={48}
-                  height={48}
-                  className="w-12 h-12 object-contain"
+                  width={64}
+                  height={64}
+                  className="w-16 h-16 object-contain"
                   draggable={false}
                 />
-                <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{num}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">{num}</span>
               </button>
             )
           })}
