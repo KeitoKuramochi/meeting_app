@@ -34,6 +34,20 @@ function readDraft(farmContactId: string): DraftData | null {
   }
 }
 
+// 確定待ち状態のドットアニメーションコンポーネント
+function PendingDots() {
+  const [dotCount, setDotCount] = useState(1)
+  useEffect(() => {
+    const id = setInterval(() => setDotCount((n) => (n % 3) + 1), 500)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <span className="text-amber-700">
+      確定待ち{'・'.repeat(dotCount)}
+    </span>
+  )
+}
+
 function getScale(confirmedCount: number): number {
   if (confirmedCount <= 0) return 0.60
   if (confirmedCount === 1) return 0.72
@@ -82,12 +96,16 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
     vx: 0, vy: 0, timer: 0,
   })
 
-  const { confirmedCount, pendingCount } = contact
+  const { confirmedCount, pendingCount, repliedCount } = contact
   const isAsleep = confirmedCount === 0
   const baseSpeed = isAsleep ? 0.12 : 0.4 + seedRand(index, 6) * 0.25
-  const showZzz = confirmedCount === 0 && pendingCount === 0
-  const showPending = pendingCount > 0
   const hasDraft = draft !== null
+  // 返信あり: replied_at IS NOT NULL のミーティングがある
+  const showReplied = repliedCount > 0
+  // 確定待ち: pendingCount > 0 かつ返信なし
+  const showPending = pendingCount > 0 && repliedCount === 0
+  // ZZZ: 確定0件・確定待ちなし・返信なし・draft なし
+  const showZzz = confirmedCount === 0 && pendingCount === 0 && repliedCount === 0 && !hasDraft
   const showKira = confirmedCount >= 3
   const showHeart = confirmedCount >= 4
   const scale = getScale(confirmedCount)
@@ -292,7 +310,7 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
         {/* 吹き出し */}
         <div className="relative mb-1 flex items-center justify-center" style={{ width: 56, height: 44 }}>
           <img
-            src="/images/processed_a1.png"
+            src={showReplied && !hasDraft ? '/images/processed_a6.png' : '/images/processed_a1.png'}
             alt=""
             aria-hidden="true"
             width={56}
@@ -303,8 +321,10 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
           <span className="relative z-10 font-bold text-gray-700 leading-none text-center" style={{ fontSize: 11 }}>
             {hasDraft ? (
               <span className="text-orange-600">未送信</span>
+            ) : showReplied ? (
+              <span className="text-red-600">返信あり！</span>
             ) : showPending ? (
-              <>確定待ち<br />{pendingCount}件</>
+              <PendingDots />
             ) : (
               <>{confirmedCount}回</>
             )}
@@ -330,10 +350,6 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
           {showZzz && (
             <img src="/images/processed_a5.png" alt="ZZZ" width={20} height={20}
               className="absolute" style={{ top: -8, right: -8 }} draggable={false} />
-          )}
-          {showPending && (
-            <img src="/images/processed_a6.png" alt="確定待ち" width={22} height={22}
-              className="absolute animate-bounce" style={{ top: -10, right: -10 }} draggable={false} />
           )}
           {showKira && !showHeart && (
             <img src="/images/processed_a2.png" alt="キラキラ" width={20} height={20}

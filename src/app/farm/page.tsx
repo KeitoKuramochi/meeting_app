@@ -67,13 +67,14 @@ async function FarmView({ farm }: { farm: Farm }) {
 
   const farmContacts: FarmContact[] = contacts ?? []
 
-  // 各 farm_contact の確定回数・確定待ち件数を集計
+  // 各 farm_contact の確定回数・確定待ち件数・返信あり件数を集計
   let confirmedCounts: ConfirmedCountRow[] = []
   let pendingCounts: ConfirmedCountRow[] = []
+  let repliedCounts: ConfirmedCountRow[] = []
   if (farmContacts.length > 0) {
     const contactIds = farmContacts.map((c) => c.id)
 
-    const [{ data: confirmedData }, { data: pendingData }] = await Promise.all([
+    const [{ data: confirmedData }, { data: pendingData }, { data: repliedData }] = await Promise.all([
       supabase
         .from('meetings')
         .select('farm_contact_id')
@@ -85,6 +86,12 @@ async function FarmView({ farm }: { farm: Farm }) {
         .select('farm_contact_id')
         .in('farm_contact_id', contactIds)
         .is('confirmed_index', null)
+        .returns<{ farm_contact_id: string }[]>(),
+      supabase
+        .from('meetings')
+        .select('farm_contact_id')
+        .in('farm_contact_id', contactIds)
+        .not('replied_at', 'is', null)
         .returns<{ farm_contact_id: string }[]>(),
     ])
 
@@ -100,6 +107,7 @@ async function FarmView({ farm }: { farm: Farm }) {
 
     confirmedCounts = toCountRows(confirmedData)
     pendingCounts = toCountRows(pendingData)
+    repliedCounts = toCountRows(repliedData)
   }
 
   // FarmContactWithCount に変換
@@ -107,6 +115,7 @@ async function FarmView({ farm }: { farm: Farm }) {
     ...c,
     confirmedCount: confirmedCounts.find((r) => r.farm_contact_id === c.id)?.count ?? 0,
     pendingCount: pendingCounts.find((r) => r.farm_contact_id === c.id)?.count ?? 0,
+    repliedCount: repliedCounts.find((r) => r.farm_contact_id === c.id)?.count ?? 0,
   }))
 
   return (
