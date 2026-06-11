@@ -3,12 +3,33 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FarmContactWithCount } from '@/types/farm'
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
+import { Candidate } from '@/types/meeting'
 
 // localStorage に保存される draft の型
 type DraftData = {
   meetingId: string
   url: string
   savedAt: string
+}
+
+// 返信モーダルに表示する返信データの型
+type ReplyData = {
+  alternative_candidates: Candidate[] | null
+  duration_minutes: number | null
+  note: string | null
+}
+
+// Supabase から取得する meetings の部分型
+type MeetingReplyRow = {
+  id: string
+  farm_contact_id: string
+  replied_at: string | null
+  confirmed_index: number | null
+  manually_confirmed: boolean
+  alternative_candidates: Candidate[] | null
+  duration_minutes: number | null
+  note: string | null
 }
 
 // 型ガード: 読み取った値が DraftData かを検証する
@@ -32,6 +53,16 @@ function readDraft(farmContactId: string): DraftData | null {
   } catch {
     return null
   }
+}
+
+// 分を「30分」「1時間」のような文字列に変換する
+function formatDuration(minutes: number | null): string {
+  if (minutes === null) return '未設定'
+  if (minutes < 60) return `${minutes}分`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (m === 0) return `${h}時間`
+  return `${h}時間${m}分`
 }
 
 // 確定待ち状態のドットアニメーションコンポーネント
@@ -66,12 +97,14 @@ type WalkState = { x: number; y: number; vx: number; vy: number; timer: number }
 
 type CharacterProps = {
   contact: FarmContactWithCount
+  liveRepliedCount: number
   index: number
   isCrown: boolean
   onTap: (id: string) => void
+  onManualConfirmed: (contactId: string) => void
 }
 
-function Character({ contact, index, isCrown, onTap }: CharacterProps) {
+function Character({ contact, liveRepliedCount, index, isCrown, onTap, onManualConfirmed }: CharacterProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const rafRef = useRef<number>(0)
@@ -86,6 +119,17 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
   // モーダル内のコピー完了フィードバック
   const [isDraftCopied, setIsDraftCopied] = useState(false)
 
+  // 返信モーダルの開閉
+  const [showReplyModal, setShowReplyModal] = useState(false)
+  // 返信データ（モーダル開時に取得）
+  const [replyData, setReplyData] = useState<ReplyData | null>(null)
+  // 返信データ取得中フラグ
+  const [isLoadingReply, setIsLoadingReply] = useState(false)
+  // 手動確定中フラグ
+  const [isConfirming, setIsConfirming] = useState(false)
+  // 手動確定完了フラグ（ローカル表示用）
+  const [localManualConfirmed, setLocalManualConfirmed] = useState(false)
+
   useEffect(() => {
     setDraft(readDraft(contact.id))
   }, [contact.id])
@@ -96,16 +140,18 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
     vx: 0, vy: 0, timer: 0,
   })
 
-  const { confirmedCount, pendingCount, repliedCount } = contact
+  // liveRepliedCount を使って返信あり状態を判断（ポーリング更新反映）
+  const effectiveRepliedCount = liveRepliedCount
+  const { confirmedCount, pendingCount } = contact
   const isAsleep = confirmedCount === 0
   const baseSpeed = isAsleep ? 0.12 : 0.4 + seedRand(index, 6) * 0.25
   const hasDraft = draft !== null
-  // 返信あり: replied_at IS NOT NULL のミーティングがある
-  const showReplied = repliedCount > 0
+  // 手動確定済みなら返信あり表示を消す
+  const showReplied = effectiveRepliedCount > 0 && !localManualConfirmed
   // 確定待ち: pendingCount > 0 かつ返信なし
-  const showPending = pendingCount > 0 && repliedCount === 0
+  const showPending = pendingCount > 0 && effectiveRepliedCount === 0
   // ZZZ: 確定0件・確定待ちなし・返信なし・draft なし
-  const showZzz = confirmedCount === 0 && pendingCount === 0 && repliedCount === 0 && !hasDraft
+  const showZzz = confirmedCount === 0 && pendingCount === 0 && effectiveRepliedCount === 0 && !hasDraft
   const showKira = confirmedCount >= 3
   const showHeart = confirmedCount >= 4
   const scale = getScale(confirmedCount)
@@ -218,6 +264,34 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
     stateRef.current.vy = 0
   }, [])
 
+  // 返信モーダルを開く際に Supabase から返信データを取得する
+  const openReplyModal = useCallback(async () => {
+    setShowReplyModal(true)
+    setIsLoadingReply(true)
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const { data } = await supabase
+        .from('meetings')
+        .select('alternative_candidates, duration_minutes, note')
+        .eq('farm_contact_id', contact.id)
+        .not('replied_at', 'is', null)
+        .order('replied_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (data) {
+        setReplyData({
+          alternative_candidates: (data.alternative_candidates ?? null) as Candidate[] | null,
+          duration_minutes: (data.duration_minutes ?? null) as number | null,
+          note: (data.note ?? null) as string | null,
+        })
+      }
+    } catch {
+      // 取得失敗は無視してモーダルは開いたまま
+    } finally {
+      setIsLoadingReply(false)
+    }
+  }, [contact.id])
+
   const handleClick = useCallback(() => {
     if (hasMovedRef.current) return
     // draft がある場合はモーダルを開く（通常遷移の前に確認）
@@ -225,8 +299,13 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
       setShowDraftModal(true)
       return
     }
+    // 返信ありの場合は返信モーダルを開く
+    if (showReplied) {
+      openReplyModal()
+      return
+    }
     onTap(contact.id)
-  }, [contact.id, draft, onTap])
+  }, [contact.id, draft, showReplied, openReplyModal, onTap])
 
   async function handleDraftCopy() {
     if (!draft) return
@@ -241,6 +320,40 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
 
   function handleDraftModalClose() {
     setShowDraftModal(false)
+  }
+
+  // 手動確定ボタンの処理
+  async function handleManualConfirm() {
+    const ok = window.confirm('本当に確定しましたか？')
+    if (!ok) return
+    setIsConfirming(true)
+    try {
+      const supabase = createSupabaseBrowserClient()
+      // farm_contact_id に紐づく未確定の meetings を取得して手動確定
+      const { data: meetings } = await supabase
+        .from('meetings')
+        .select('id')
+        .eq('farm_contact_id', contact.id)
+        .not('replied_at', 'is', null)
+        .eq('manually_confirmed', false)
+        .is('confirmed_index', null)
+        .limit(1)
+
+      if (meetings && meetings.length > 0) {
+        const meetingId = (meetings[0] as { id: string }).id
+        await supabase
+          .from('meetings')
+          .update({ manually_confirmed: true })
+          .eq('id', meetingId)
+      }
+      setLocalManualConfirmed(true)
+      setShowReplyModal(false)
+      onManualConfirmed(contact.id)
+    } catch {
+      // エラーは無視（UIに反映しない）
+    } finally {
+      setIsConfirming(false)
+    }
   }
 
   return (
@@ -290,6 +403,87 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
         </div>
       )}
 
+      {/* 返信モーダル */}
+      {showReplyModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => setShowReplyModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="mb-1 text-3xl" role="img" aria-label="返信">📬</div>
+              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
+                返信が届きました
+              </h2>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {contact.contact_name}さんから別日提案があります
+              </p>
+            </div>
+
+            {isLoadingReply ? (
+              <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                読み込み中...
+              </div>
+            ) : replyData ? (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 space-y-2 text-sm">
+                {replyData.alternative_candidates && replyData.alternative_candidates.length > 0 && (
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">提案日時</span>
+                    <span className="font-medium text-gray-800 dark:text-gray-200">
+                      {replyData.alternative_candidates[0].date} {replyData.alternative_candidates[0].time}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">所要時間</span>
+                  <span className="font-medium text-gray-800 dark:text-gray-200">
+                    {formatDuration(replyData.duration_minutes)}
+                  </span>
+                </div>
+                {replyData.note && (
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">備考</span>
+                    <span className="text-gray-800 dark:text-gray-200">{replyData.note}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-2 text-center text-sm text-gray-500 dark:text-gray-400">
+                詳細を取得できませんでした
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => { window.location.href = `/request/${contact.id}` }}
+              className="flex h-11 w-full items-center justify-center rounded-xl bg-blue-600 dark:bg-blue-700 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+            >
+              新しいリクエストを送る
+            </button>
+
+            <button
+              type="button"
+              onClick={handleManualConfirm}
+              disabled={isConfirming}
+              className="flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors disabled:opacity-60"
+            >
+              {isConfirming ? '確定中...' : '手動で確定する'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowReplyModal(false)}
+              className="flex h-10 w-full items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none transition-colors"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
       <div
         ref={containerRef}
         className="absolute flex flex-col items-center select-none"
@@ -305,7 +499,17 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
         role="button"
         tabIndex={0}
         aria-label={`${contact.contact_name}にリクエストを送る`}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { if (draft) setShowDraftModal(true); else onTap(contact.id) } }}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            if (draft) {
+              setShowDraftModal(true)
+            } else if (showReplied) {
+              openReplyModal()
+            } else {
+              onTap(contact.id)
+            }
+          }
+        }}
       >
         {/* 吹き出し */}
         <div className="relative mb-1 flex items-center justify-center" style={{ width: 56, height: 44 }}>
@@ -378,7 +582,65 @@ type Props = { contacts: FarmContactWithCount[] }
 
 export default function FarmCharacters({ contacts }: Props) {
   const router = useRouter()
+
+  // ポーリングで取得した最新の repliedCount をキャラID別に保持する
+  const [liveRepliedCounts, setLiveRepliedCounts] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {}
+    for (const c of contacts) {
+      initial[c.id] = c.repliedCount
+    }
+    return initial
+  })
+
+  // 20秒間隔でポーリングして replied_at の状況を取得する
+  useEffect(() => {
+    if (contacts.length === 0) return
+
+    const contactIds = contacts.map(c => c.id)
+
+    const fetchReplied = async () => {
+      try {
+        const supabase = createSupabaseBrowserClient()
+        const { data } = await supabase
+          .from('meetings')
+          .select('farm_contact_id, replied_at, confirmed_index, manually_confirmed')
+          .in('farm_contact_id', contactIds)
+          .or('replied_at.not.is.null,confirmed_index.not.is.null,manually_confirmed.eq.true')
+
+        if (!data) return
+
+        // farm_contact_id ごとに replied_at IS NOT NULL の件数を集計
+        const counts: Record<string, number> = {}
+        for (const id of contactIds) {
+          counts[id] = 0
+        }
+        for (const row of data as MeetingReplyRow[]) {
+          if (row.replied_at !== null) {
+            const cid = row.farm_contact_id
+            if (cid in counts) {
+              counts[cid] = (counts[cid] ?? 0) + 1
+            }
+          }
+        }
+        setLiveRepliedCounts(counts)
+      } catch {
+        // ポーリングエラーは無視する
+      }
+    }
+
+    // 即時実行してから間隔ポーリング開始
+    fetchReplied()
+    const intervalId = setInterval(fetchReplied, 20000)
+
+    return () => clearInterval(intervalId)
+  }, [contacts])
+
   const handleTap = useCallback((id: string) => router.push(`/request/${id}`), [router])
+
+  // 手動確定後に liveRepliedCounts を 0 にリセットする
+  const handleManualConfirmed = useCallback((contactId: string) => {
+    setLiveRepliedCounts(prev => ({ ...prev, [contactId]: 0 }))
+  }, [])
 
   if (contacts.length === 0) {
     return (
@@ -401,9 +663,11 @@ export default function FarmCharacters({ contacts }: Props) {
         <Character
           key={contact.id}
           contact={contact}
+          liveRepliedCount={liveRepliedCounts[contact.id] ?? contact.repliedCount}
           index={index}
           isCrown={contact.id === crownId}
           onTap={handleTap}
+          onManualConfirmed={handleManualConfirmed}
         />
       ))}
     </>
