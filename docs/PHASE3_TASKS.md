@@ -200,7 +200,7 @@
 
 ### TASK-021: 確定後の成長反映（manually_confirmed を confirmedCount に加算）
 
-**ステータス**: `[~]`
+**ステータス**: `[x]`
 
 **説明**:
 農園ページのデータ取得ロジック（`/farm/page.tsx`）を修正する。
