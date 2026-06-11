@@ -116,6 +116,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
   const rafRef = useRef<number>(0)
   const isDraggingRef = useRef(false)
   const hasMovedRef = useRef(false)
+  const touchTappedRef = useRef(false)
   const [grabbing, setGrabbing] = useState(false)
 
   // localStorage の draft
@@ -255,17 +256,17 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
   }, [baseSpeed, startAnimation])
 
   const handlePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault()
+    // マウスのみ preventDefault（タッチでは click イベントを殺さないようにする）
+    if (e.type === 'mousedown') e.preventDefault()
     isDraggingRef.current = true
     hasMovedRef.current = false
+    touchTappedRef.current = false
     setGrabbing(true)
     stateRef.current.vx = 0
     stateRef.current.vy = 0
   }, [])
 
-  const openHistoryModal = useCallback(async () => {
-    setShowHistoryModal(true)
-    setIsLoadingHistory(true)
+  const fetchHistory = useCallback(async () => {
     try {
       const supabase = createSupabaseBrowserClient()
       const { data } = await supabase
@@ -275,14 +276,43 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
         .order('created_at', { ascending: false })
       setHistoryItems((data as MeetingHistoryItem[]) ?? [])
     } catch {
-      setHistoryItems([])
+      // ignore
     } finally {
       setIsLoadingHistory(false)
     }
   }, [contact.id])
 
+  // マウント後にバックグラウンドで履歴を先読みしておく
+  useEffect(() => {
+    fetchHistory()
+  }, [fetchHistory])
+
+  const openHistoryModal = useCallback(() => {
+    setShowHistoryModal(true)
+    // キャッシュがなければローディング表示しつつ取得
+    if (historyItems.length === 0) setIsLoadingHistory(true)
+    fetchHistory()
+  }, [fetchHistory, historyItems.length])
+
+  // タッチタップを直接処理（touchstart で e.preventDefault しないと click が来ない端末対策）
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!hasMovedRef.current && isDraggingRef.current) {
+      e.preventDefault()
+      touchTappedRef.current = true
+      isDraggingRef.current = false
+      setGrabbing(false)
+      const a = Math.random() * Math.PI * 2
+      stateRef.current.vx = Math.cos(a) * baseSpeed
+      stateRef.current.vy = Math.sin(a) * baseSpeed * 0.35
+      stateRef.current.timer = Math.floor(60 + Math.random() * 120)
+      startAnimation()
+      openHistoryModal()
+    }
+  }, [openHistoryModal, baseSpeed, startAnimation])
+
   const handleClick = useCallback(() => {
     if (hasMovedRef.current) return
+    if (touchTappedRef.current) { touchTappedRef.current = false; return }
     openHistoryModal()
   }, [openHistoryModal])
 
@@ -533,6 +563,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
         }}
         onMouseDown={handlePointerDown}
         onTouchStart={handlePointerDown}
+        onTouchEnd={handleTouchEnd}
         onClick={handleClick}
         role="button"
         tabIndex={0}
