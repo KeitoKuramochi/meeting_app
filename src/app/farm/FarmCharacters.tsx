@@ -4,6 +4,36 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FarmContactWithCount } from '@/types/farm'
 
+// localStorage に保存される draft の型
+type DraftData = {
+  meetingId: string
+  url: string
+  savedAt: string
+}
+
+// 型ガード: 読み取った値が DraftData かを検証する
+function isDraftData(value: unknown): value is DraftData {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  return (
+    typeof v.meetingId === 'string' &&
+    typeof v.url === 'string' &&
+    typeof v.savedAt === 'string'
+  )
+}
+
+function readDraft(farmContactId: string): DraftData | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(`phase3_draft_${farmContactId}`)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    return isDraftData(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
 function getScale(confirmedCount: number): number {
   if (confirmedCount <= 0) return 0.60
   if (confirmedCount === 1) return 0.72
@@ -35,6 +65,17 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
   const hasMovedRef = useRef(false)
   const [grabbing, setGrabbing] = useState(false)
 
+  // localStorage の draft を保持する state
+  const [draft, setDraft] = useState<DraftData | null>(null)
+  // 未送信URLを表示するモーダルの開閉
+  const [showDraftModal, setShowDraftModal] = useState(false)
+  // モーダル内のコピー完了フィードバック
+  const [isDraftCopied, setIsDraftCopied] = useState(false)
+
+  useEffect(() => {
+    setDraft(readDraft(contact.id))
+  }, [contact.id])
+
   const stateRef = useRef<WalkState>({
     x: 35 + seedRand(index, 2) * 30,
     y: 15 + seedRand(index, 3) * 30,
@@ -46,6 +87,7 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
   const baseSpeed = isAsleep ? 0.12 : 0.4 + seedRand(index, 6) * 0.25
   const showZzz = confirmedCount === 0 && pendingCount === 0
   const showPending = pendingCount > 0
+  const hasDraft = draft !== null
   const showKira = confirmedCount >= 3
   const showHeart = confirmedCount >= 4
   const scale = getScale(confirmedCount)
@@ -160,90 +202,159 @@ function Character({ contact, index, isCrown, onTap }: CharacterProps) {
 
   const handleClick = useCallback(() => {
     if (hasMovedRef.current) return
+    // draft がある場合はモーダルを開く（通常遷移の前に確認）
+    if (draft !== null) {
+      setShowDraftModal(true)
+      return
+    }
     onTap(contact.id)
-  }, [contact.id, onTap])
+  }, [contact.id, draft, onTap])
+
+  async function handleDraftCopy() {
+    if (!draft) return
+    try {
+      await navigator.clipboard.writeText(draft.url)
+      setIsDraftCopied(true)
+      setTimeout(() => setIsDraftCopied(false), 2000)
+    } catch {
+      // クリップボードAPIが使えない場合は無視
+    }
+  }
+
+  function handleDraftModalClose() {
+    setShowDraftModal(false)
+  }
 
   return (
-    <div
-      ref={containerRef}
-      className="absolute flex flex-col items-center select-none"
-      style={{
-        left: `${stateRef.current.x}%`,
-        bottom: `${stateRef.current.y}%`,
-        cursor: grabbing ? 'grabbing' : 'grab',
-        zIndex: grabbing ? 50 : 1,
-      }}
-      onMouseDown={handlePointerDown}
-      onTouchStart={handlePointerDown}
-      onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      aria-label={`${contact.contact_name}にリクエストを送る`}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onTap(contact.id) }}
-    >
-      {/* 吹き出し */}
-      <div className="relative mb-1 flex items-center justify-center" style={{ width: 56, height: 44 }}>
-        <img
-          src="/images/processed_a1.png"
-          alt=""
-          aria-hidden="true"
-          width={56}
-          height={44}
-          className="absolute inset-0 w-full h-full object-contain"
-          draggable={false}
-        />
-        <span className="relative z-10 font-bold text-gray-700 leading-none text-center" style={{ fontSize: 11 }}>
-          {showPending ? (
-            <>確定待ち<br />{pendingCount}件</>
-          ) : (
-            <>{confirmedCount}回</>
+    <>
+      {/* 未送信URLモーダル */}
+      {showDraftModal && draft && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={handleDraftModalClose}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="mb-1 text-3xl" role="img" aria-label="未送信">📋</div>
+              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
+                未送信のURLがあります
+              </h2>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {contact.contact_name}さんへの送付URLを確認できます
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2">
+              <p className="break-all text-xs font-mono text-gray-700 dark:text-gray-300">
+                {draft.url}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDraftCopy}
+              className="flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+            >
+              {isDraftCopied ? 'コピーしました！' : 'URLをコピー'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDraftModalClose}
+              className="flex h-10 w-full items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none transition-colors"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div
+        ref={containerRef}
+        className="absolute flex flex-col items-center select-none"
+        style={{
+          left: `${stateRef.current.x}%`,
+          bottom: `${stateRef.current.y}%`,
+          cursor: grabbing ? 'grabbing' : 'grab',
+          zIndex: grabbing ? 50 : 1,
+        }}
+        onMouseDown={handlePointerDown}
+        onTouchStart={handlePointerDown}
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        aria-label={`${contact.contact_name}にリクエストを送る`}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { if (draft) setShowDraftModal(true); else onTap(contact.id) } }}
+      >
+        {/* 吹き出し */}
+        <div className="relative mb-1 flex items-center justify-center" style={{ width: 56, height: 44 }}>
+          <img
+            src="/images/processed_a1.png"
+            alt=""
+            aria-hidden="true"
+            width={56}
+            height={44}
+            className="absolute inset-0 w-full h-full object-contain"
+            draggable={false}
+          />
+          <span className="relative z-10 font-bold text-gray-700 leading-none text-center" style={{ fontSize: 11 }}>
+            {hasDraft ? (
+              <span className="text-orange-600">未送信</span>
+            ) : showPending ? (
+              <>確定待ち<br />{pendingCount}件</>
+            ) : (
+              <>{confirmedCount}回</>
+            )}
+          </span>
+        </div>
+
+        {/* キャラ本体 + オーバーレイ */}
+        <div className="relative" style={{ width: 80 * scale, height: 80 * scale }}>
+          <img
+            ref={imgRef}
+            src={`/images/processed_${contact.character_number}.png`}
+            alt={contact.contact_name}
+            width={80}
+            height={80}
+            style={{ imageRendering: 'pixelated', width: '100%', height: '100%' }}
+            draggable={false}
+          />
+
+          {isCrown && (
+            <img src="/images/processed_a4.png" alt="王冠" width={24} height={24}
+              className="absolute left-1/2 -translate-x-1/2" style={{ top: -20 }} draggable={false} />
           )}
+          {showZzz && (
+            <img src="/images/processed_a5.png" alt="ZZZ" width={20} height={20}
+              className="absolute" style={{ top: -8, right: -8 }} draggable={false} />
+          )}
+          {showPending && (
+            <img src="/images/processed_a6.png" alt="確定待ち" width={22} height={22}
+              className="absolute animate-bounce" style={{ top: -10, right: -10 }} draggable={false} />
+          )}
+          {showKira && !showHeart && (
+            <img src="/images/processed_a2.png" alt="キラキラ" width={20} height={20}
+              className="absolute animate-pulse" style={{ top: -8, left: -8 }} draggable={false} />
+          )}
+          {showHeart && (
+            <img
+              src={kiraPhase ? '/images/processed_a2.png' : '/images/processed_a3.png'}
+              alt={kiraPhase ? 'キラキラ' : 'ハート'}
+              width={20} height={20}
+              className="absolute" style={{ top: -8, left: -8 }} draggable={false}
+            />
+          )}
+        </div>
+
+        {/* 名前ラベル */}
+        <span className="mt-1 rounded-full bg-white/80 dark:bg-gray-900/80 px-2 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-300 shadow-sm whitespace-nowrap">
+          {contact.contact_name}
         </span>
       </div>
-
-      {/* キャラ本体 + オーバーレイ */}
-      <div className="relative" style={{ width: 80 * scale, height: 80 * scale }}>
-        <img
-          ref={imgRef}
-          src={`/images/processed_${contact.character_number}.png`}
-          alt={contact.contact_name}
-          width={80}
-          height={80}
-          style={{ imageRendering: 'pixelated', width: '100%', height: '100%' }}
-          draggable={false}
-        />
-
-        {isCrown && (
-          <img src="/images/processed_a4.png" alt="王冠" width={24} height={24}
-            className="absolute left-1/2 -translate-x-1/2" style={{ top: -20 }} draggable={false} />
-        )}
-        {showZzz && (
-          <img src="/images/processed_a5.png" alt="ZZZ" width={20} height={20}
-            className="absolute" style={{ top: -8, right: -8 }} draggable={false} />
-        )}
-        {showPending && (
-          <img src="/images/processed_a6.png" alt="確定待ち" width={22} height={22}
-            className="absolute animate-bounce" style={{ top: -10, right: -10 }} draggable={false} />
-        )}
-        {showKira && !showHeart && (
-          <img src="/images/processed_a2.png" alt="キラキラ" width={20} height={20}
-            className="absolute animate-pulse" style={{ top: -8, left: -8 }} draggable={false} />
-        )}
-        {showHeart && (
-          <img
-            src={kiraPhase ? '/images/processed_a2.png' : '/images/processed_a3.png'}
-            alt={kiraPhase ? 'キラキラ' : 'ハート'}
-            width={20} height={20}
-            className="absolute" style={{ top: -8, left: -8 }} draggable={false}
-          />
-        )}
-      </div>
-
-      {/* 名前ラベル */}
-      <span className="mt-1 rounded-full bg-white/80 dark:bg-gray-900/80 px-2 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-300 shadow-sm whitespace-nowrap">
-        {contact.contact_name}
-      </span>
-    </div>
+    </>
   )
 }
 

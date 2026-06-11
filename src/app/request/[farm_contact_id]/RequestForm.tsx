@@ -42,7 +42,10 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
   const [candidates, setCandidates] = useState<Candidate[]>([createEmptyCandidate()])
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submittedUrl, setSubmittedUrl] = useState<string | null>(null)
+  // submittedInfo: 送信成功後に meetingId と url を保持する
+  const [submittedInfo, setSubmittedInfo] = useState<{ meetingId: string; url: string } | null>(null)
+  // sendChoice: null=未選択 / 'now'=今送る選択後 / 'later'=後で選択後
+  const [sendChoice, setSendChoice] = useState<'now' | 'later' | null>(null)
   const [isCopied, setIsCopied] = useState(false)
 
   function addCandidate() {
@@ -116,7 +119,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
       }
 
       const url = `${window.location.origin}/r/${data.id}`
-      setSubmittedUrl(url)
+      setSubmittedInfo({ meetingId: data.id, url })
     } catch {
       setErrors({ submit: '予期しないエラーが発生しました。' })
     } finally {
@@ -125,9 +128,9 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
   }
 
   async function handleCopy() {
-    if (!submittedUrl) return
+    if (!submittedInfo) return
     try {
-      await navigator.clipboard.writeText(submittedUrl)
+      await navigator.clipboard.writeText(submittedInfo.url)
       setIsCopied(true)
       setTimeout(() => setIsCopied(false), 2000)
     } catch {
@@ -135,15 +138,95 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
     }
   }
 
-  // 完了画面
-  if (submittedUrl) {
+  function handleSendNow() {
+    setSendChoice('now')
+    handleCopy()
+  }
+
+  function handleSendLater() {
+    if (!submittedInfo) return
+    const draft = {
+      meetingId: submittedInfo.meetingId,
+      url: submittedInfo.url,
+      savedAt: new Date().toISOString(),
+    }
+    localStorage.setItem(`phase3_draft_${farmContactId}`, JSON.stringify(draft))
+    setSendChoice('later')
+  }
+
+  // 確認・完了画面
+  if (submittedInfo) {
     const nextCount = confirmedCount + 1
+
+    // 「今送る」を選んだ後: コピー完了フィードバック → 農園に戻る誘導
+    if (sendChoice === 'now') {
+      return (
+        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
+          <div className="text-center">
+            <div className="mb-2 text-5xl" role="img" aria-label="完了">🎉</div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+              URLをコピーしました！
+            </h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {contactName}さんにURLを送りましょう
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
+            <p className="break-all text-sm font-mono text-gray-700 dark:text-gray-300">
+              {submittedInfo.url}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-colors"
+          >
+            {isCopied ? 'コピーしました！' : 'もう一度コピー'}
+          </button>
+
+          <a
+            href="/farm"
+            className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-base font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+          >
+            農園に戻る
+          </a>
+        </div>
+      )
+    }
+
+    // 「後で」を選んだ後: 農園へ自動遷移の案内
+    if (sendChoice === 'later') {
+      return (
+        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
+          <div className="text-center">
+            <div className="mb-2 text-4xl" role="img" aria-label="保存">📋</div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+              下書きを保存しました
+            </h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              農園から{contactName}さんをタップするといつでもURLを確認できます
+            </p>
+          </div>
+
+          <a
+            href="/farm"
+            className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-colors"
+          >
+            農園に戻る
+          </a>
+        </div>
+      )
+    }
+
+    // 未選択状態: 「今送りますか？後で送りますか？」の確認画面
     return (
       <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
         <div className="text-center">
-          <div className="mb-2 text-5xl" role="img" aria-label="完了">🎉</div>
+          <div className="mb-2 text-5xl" role="img" aria-label="完了">✅</div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-            リクエストを送りました！
+            リクエストを作成しました！
           </h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {confirmedCount === 0
@@ -152,32 +235,34 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           </p>
         </div>
 
-        {/* URLエリア */}
-        <div>
-          <p className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
-            このURLを{contactName}さんに送ってください
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
+          <p className="mb-1 text-xs font-semibold text-gray-500 dark:text-gray-400">送付URL</p>
+          <p className="break-all text-sm font-mono text-gray-700 dark:text-gray-300">
+            {submittedInfo.url}
           </p>
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
-            <p className="break-all text-sm font-mono text-gray-700 dark:text-gray-300">
-              {submittedUrl}
-            </p>
-          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-colors"
-        >
-          {isCopied ? 'コピーしました！' : 'URLをコピー'}
-        </button>
+        <p className="text-sm font-semibold text-center text-gray-700 dark:text-gray-300">
+          今すぐ{contactName}さんに送りますか？
+        </p>
 
-        <a
-          href="/farm"
-          className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-base font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
-        >
-          農園に戻る
-        </a>
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={handleSendNow}
+            className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-colors"
+          >
+            今送る（URLをコピー）
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSendLater}
+            className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-base font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+          >
+            後で送る
+          </button>
+        </div>
       </div>
     )
   }
