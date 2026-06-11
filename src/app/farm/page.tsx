@@ -79,7 +79,7 @@ async function FarmView({ farm }: { farm: Farm }) {
         .from('meetings')
         .select('farm_contact_id')
         .in('farm_contact_id', contactIds)
-        .not('confirmed_index', 'is', null)
+        .or('confirmed_index.not.is.null,manually_confirmed.eq.true')
         .returns<{ farm_contact_id: string }[]>(),
       supabase
         .from('meetings')
