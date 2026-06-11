@@ -95,6 +95,8 @@ export default async function ReviewPage({ params }: Props) {
               meetingId={meeting.id}
               isConfirmed={isConfirmed}
               confirmedIndex={meeting.confirmed_index}
+              initialDurationMinutes={meeting.duration_minutes}
+              initialNote={meeting.note}
             />
           )}
         </div>
