@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import OAuthLoginButtons from './_components/OAuthLoginButtons'
 
 export default function TopPage() {
@@ -55,6 +56,14 @@ export default function TopPage() {
             アカウントでログインして始める
           </p>
           <OAuthLoginButtons />
+          <div className="mt-4 text-center">
+            <Link
+              href="/demo"
+              className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded"
+            >
+              ログイン無しでデモを見る →
+            </Link>
+          </div>
         </div>
       </main>
 
