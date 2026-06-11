@@ -214,3 +214,30 @@
 - [ ] `FarmContactWithCount` 型の変更が不要な場合はそのままで良い（confirmedCount の計算方法変更のみ）
 - [ ] `npm run build` がエラーなく通る
 - [ ] `git commit` が1件作成されている
+
+---
+
+### TASK-022: ログイン不要のデモ農園ページ
+
+**ステータス**: `[x]`
+
+**説明**:
+`/demo` にログイン不要のデモ農園ページを実装する。
+localStorage にキャラデータを保存・読み込み、農園UIを体験できる。
+
+**完了条件**:
+- [x] `src/app/demo/page.tsx` が新規作成されている
+- [x] `src/app/demo/add/page.tsx` が新規作成されている
+- [x] `src/app/demo/DemoFarmCharacters.tsx` が新規作成されている（Supabase 依存なし）
+- [x] `/demo` はログイン不要でアクセスできる（middleware の認証チェック対象外）
+- [x] `/demo/add` で名前入力＋キャラ選択が可能
+- [x] キャラ追加後は localStorage の `demo_contacts` キーに保存される
+- [x] `/demo` でキャラが農園上を歩き回る
+- [x] キャラをタップするとトーストメッセージが表示される（デモなので遷移しない）
+- [x] ヘッダーに「← ログインして本格利用」リンク（href="/"）がある
+- [x] ヘッダーに「キャラを追加」ボタン（href="/demo/add"）がある
+- [x] トップページ（/）のログインボタン下に「ログイン無しでデモを見る →」リンクがある
+- [x] `npm run build` がエラーなく通る
+- [x] `git commit` が1件作成されている
+
+**commit hash**: 399d346
