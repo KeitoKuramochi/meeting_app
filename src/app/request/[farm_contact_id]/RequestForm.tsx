@@ -20,6 +20,18 @@ type FormErrors = {
 const MAX_CANDIDATES = 5
 const MIN_DATE = new Date().toISOString().split('T')[0]
 
+// 06:00〜22:00 の30分刻み（33個）
+const TIME_OPTIONS: string[] = (() => {
+  const options: string[] = []
+  for (let h = 6; h <= 22; h++) {
+    options.push(`${String(h).padStart(2, '0')}:00`)
+    if (h < 22) {
+      options.push(`${String(h).padStart(2, '0')}:30`)
+    }
+  }
+  return options
+})()
+
 function createEmptyCandidate(): Candidate {
   return { date: '', time: '' }
 }
@@ -248,13 +260,19 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
                   aria-label={`候補日${index + 1}の日付`}
                   className="flex-1 h-11 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent"
                 />
-                <input
-                  type="time"
+                <select
                   value={candidate.time}
                   onChange={(e) => updateCandidate(index, 'time', e.target.value)}
                   aria-label={`候補日${index + 1}の時刻`}
-                  className="w-full sm:w-32 h-11 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent"
-                />
+                  className="w-full sm:w-36 h-11 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent"
+                >
+                  <option value="">時間を選択</option>
+                  {TIME_OPTIONS.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
               </div>
               {candidates.length > 1 && (
                 <button
