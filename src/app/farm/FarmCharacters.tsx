@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { FarmContactWithCount } from '@/types/farm'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 import { Candidate } from '@/types/meeting'
@@ -13,23 +12,26 @@ type DraftData = {
   savedAt: string
 }
 
-// 返信モーダルに表示する返信データの型
-type ReplyData = {
+// ミーティング履歴の表示用型（manually_confirmed は DB に存在しない可能性があるため除外）
+type MeetingHistoryItem = {
+  id: string
+  student_name: string
+  purpose: string
+  candidates: Candidate[]
+  confirmed_index: number | null
+  confirmed_at: string | null
+  created_at: string
+  replied_at: string | null
   alternative_candidates: Candidate[] | null
   duration_minutes: number | null
   note: string | null
 }
 
-// Supabase から取得する meetings の部分型
+// Supabase から取得する meetings の部分型（ポーリング用）
 type MeetingReplyRow = {
-  id: string
   farm_contact_id: string
   replied_at: string | null
   confirmed_index: number | null
-  manually_confirmed: boolean
-  alternative_candidates: Candidate[] | null
-  duration_minutes: number | null
-  note: string | null
 }
 
 // 型ガード: 読み取った値が DraftData かを検証する
@@ -55,7 +57,6 @@ function readDraft(farmContactId: string): DraftData | null {
   }
 }
 
-// 分を「30分」「1時間」のような文字列に変換する
 function formatDuration(minutes: number | null): string {
   if (minutes === null) return '未設定'
   if (minutes < 60) return `${minutes}分`
@@ -63,6 +64,11 @@ function formatDuration(minutes: number | null): string {
   const m = minutes % 60
   if (m === 0) return `${h}時間`
   return `${h}時間${m}分`
+}
+
+function formatDate(dateString: string): string {
+  const d = new Date(dateString)
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
 }
 
 // 確定待ち状態のドットアニメーションコンポーネント
@@ -100,11 +106,10 @@ type CharacterProps = {
   liveRepliedCount: number
   index: number
   isCrown: boolean
-  onTap: (id: string) => void
   onManualConfirmed: (contactId: string) => void
 }
 
-function Character({ contact, liveRepliedCount, index, isCrown, onTap, onManualConfirmed }: CharacterProps) {
+function Character({ contact, liveRepliedCount, index, isCrown, onManualConfirmed }: CharacterProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const rafRef = useRef<number>(0)
@@ -112,23 +117,20 @@ function Character({ contact, liveRepliedCount, index, isCrown, onTap, onManualC
   const hasMovedRef = useRef(false)
   const [grabbing, setGrabbing] = useState(false)
 
-  // localStorage の draft を保持する state
+  // localStorage の draft
   const [draft, setDraft] = useState<DraftData | null>(null)
-  // 未送信URLを表示するモーダルの開閉
-  const [showDraftModal, setShowDraftModal] = useState(false)
-  // モーダル内のコピー完了フィードバック
   const [isDraftCopied, setIsDraftCopied] = useState(false)
 
-  // 返信モーダルの開閉
-  const [showReplyModal, setShowReplyModal] = useState(false)
-  // 返信データ（モーダル開時に取得）
-  const [replyData, setReplyData] = useState<ReplyData | null>(null)
-  // 返信データ取得中フラグ
-  const [isLoadingReply, setIsLoadingReply] = useState(false)
-  // 手動確定中フラグ
+  // 履歴モーダル
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [historyItems, setHistoryItems] = useState<MeetingHistoryItem[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [copiedMeetingId, setCopiedMeetingId] = useState<string | null>(null)
+
+  // 手動確定
   const [isConfirming, setIsConfirming] = useState(false)
-  // 手動確定完了フラグ（ローカル表示用）
   const [localManualConfirmed, setLocalManualConfirmed] = useState(false)
+  const [locallyConfirmedIds, setLocallyConfirmedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     setDraft(readDraft(contact.id))
@@ -140,17 +142,13 @@ function Character({ contact, liveRepliedCount, index, isCrown, onTap, onManualC
     vx: 0, vy: 0, timer: 0,
   })
 
-  // liveRepliedCount を使って返信あり状態を判断（ポーリング更新反映）
   const effectiveRepliedCount = liveRepliedCount
   const { confirmedCount, pendingCount } = contact
   const isAsleep = confirmedCount === 0
   const baseSpeed = isAsleep ? 0.12 : 0.4 + seedRand(index, 6) * 0.25
   const hasDraft = draft !== null
-  // 手動確定済みなら返信あり表示を消す
   const showReplied = effectiveRepliedCount > 0 && !localManualConfirmed
-  // 確定待ち: pendingCount > 0 かつ返信なし
   const showPending = pendingCount > 0 && effectiveRepliedCount === 0
-  // ZZZ: 確定0件・確定待ちなし・返信なし・draft なし
   const showZzz = confirmedCount === 0 && pendingCount === 0 && effectiveRepliedCount === 0 && !hasDraft
   const showKira = confirmedCount >= 3
   const showHeart = confirmedCount >= 4
@@ -209,7 +207,6 @@ function Character({ contact, liveRepliedCount, index, isCrown, onTap, onManualC
     return () => cancelAnimationFrame(rafRef.current)
   }, [index, baseSpeed, startAnimation])
 
-  // ドラッグ中のマウス/タッチ移動をdocumentで監視
   useEffect(() => {
     const updatePos = (clientX: number, clientY: number) => {
       if (!isDraggingRef.current) return
@@ -264,48 +261,28 @@ function Character({ contact, liveRepliedCount, index, isCrown, onTap, onManualC
     stateRef.current.vy = 0
   }, [])
 
-  // 返信モーダルを開く際に Supabase から返信データを取得する
-  const openReplyModal = useCallback(async () => {
-    setShowReplyModal(true)
-    setIsLoadingReply(true)
+  const openHistoryModal = useCallback(async () => {
+    setShowHistoryModal(true)
+    setIsLoadingHistory(true)
     try {
       const supabase = createSupabaseBrowserClient()
       const { data } = await supabase
         .from('meetings')
-        .select('alternative_candidates, duration_minutes, note')
+        .select('id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note')
         .eq('farm_contact_id', contact.id)
-        .not('replied_at', 'is', null)
-        .order('replied_at', { ascending: false })
-        .limit(1)
-        .single()
-      if (data) {
-        setReplyData({
-          alternative_candidates: (data.alternative_candidates ?? null) as Candidate[] | null,
-          duration_minutes: (data.duration_minutes ?? null) as number | null,
-          note: (data.note ?? null) as string | null,
-        })
-      }
+        .order('created_at', { ascending: false })
+      setHistoryItems((data as MeetingHistoryItem[]) ?? [])
     } catch {
-      // 取得失敗は無視してモーダルは開いたまま
+      setHistoryItems([])
     } finally {
-      setIsLoadingReply(false)
+      setIsLoadingHistory(false)
     }
   }, [contact.id])
 
   const handleClick = useCallback(() => {
     if (hasMovedRef.current) return
-    // draft がある場合はモーダルを開く（通常遷移の前に確認）
-    if (draft !== null) {
-      setShowDraftModal(true)
-      return
-    }
-    // 返信ありの場合は返信モーダルを開く
-    if (showReplied) {
-      openReplyModal()
-      return
-    }
-    onTap(contact.id)
-  }, [contact.id, draft, showReplied, openReplyModal, onTap])
+    openHistoryModal()
+  }, [openHistoryModal])
 
   async function handleDraftCopy() {
     if (!draft) return
@@ -314,172 +291,218 @@ function Character({ contact, liveRepliedCount, index, isCrown, onTap, onManualC
       setIsDraftCopied(true)
       setTimeout(() => setIsDraftCopied(false), 2000)
     } catch {
-      // クリップボードAPIが使えない場合は無視
+      // ignore
     }
   }
 
-  function handleDraftModalClose() {
-    setShowDraftModal(false)
+  async function copyMeetingUrl(meetingId: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedMeetingId(meetingId)
+      setTimeout(() => setCopiedMeetingId(null), 2000)
+    } catch {
+      // ignore
+    }
   }
 
-  // 手動確定ボタンの処理
-  async function handleManualConfirm() {
+  async function handleManualConfirmItem(meetingId: string) {
     const ok = window.confirm('本当に確定しましたか？')
     if (!ok) return
     setIsConfirming(true)
     try {
       const supabase = createSupabaseBrowserClient()
-      // farm_contact_id に紐づく未確定の meetings を取得して手動確定
-      const { data: meetings } = await supabase
+      await supabase
         .from('meetings')
-        .select('id')
-        .eq('farm_contact_id', contact.id)
-        .not('replied_at', 'is', null)
-        .eq('manually_confirmed', false)
-        .is('confirmed_index', null)
-        .limit(1)
-
-      if (meetings && meetings.length > 0) {
-        const meetingId = (meetings[0] as { id: string }).id
-        await supabase
-          .from('meetings')
-          .update({ manually_confirmed: true })
-          .eq('id', meetingId)
-      }
-      setLocalManualConfirmed(true)
-      setShowReplyModal(false)
-      onManualConfirmed(contact.id)
+        .update({ manually_confirmed: true })
+        .eq('id', meetingId)
     } catch {
-      // エラーは無視（UIに反映しない）
+      // DB エラーは無視してローカル表示だけ更新
     } finally {
       setIsConfirming(false)
+      setLocallyConfirmedIds(prev => new Set(prev).add(meetingId))
+      setLocalManualConfirmed(true)
+      onManualConfirmed(contact.id)
     }
   }
 
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+
   return (
     <>
-      {/* 未送信URLモーダル */}
-      {showDraftModal && draft && (
+      {/* 履歴モーダル */}
+      {showHistoryModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-          onClick={handleDraftModalClose}
+          onClick={() => setShowHistoryModal(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-xl space-y-4"
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 shadow-xl overflow-hidden flex flex-col"
+            style={{ maxHeight: '85vh' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-center">
-              <div className="mb-1 text-3xl" role="img" aria-label="未送信">📋</div>
+            {/* ヘッダー */}
+            <div className="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 text-center">
               <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
-                未送信のURLがあります
+                {contact.contact_name}のリクエスト
               </h2>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {contact.contact_name}さんへの送付URLを確認できます
-              </p>
             </div>
 
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2">
-              <p className="break-all text-xs font-mono text-gray-700 dark:text-gray-300">
-                {draft.url}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleDraftCopy}
-              className="flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
-            >
-              {isDraftCopied ? 'コピーしました！' : 'URLをコピー'}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDraftModalClose}
-              className="flex h-10 w-full items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none transition-colors"
-            >
-              閉じる
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 返信モーダル */}
-      {showReplyModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-          onClick={() => setShowReplyModal(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center">
-              <div className="mb-1 text-3xl" role="img" aria-label="返信">📬</div>
-              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
-                返信が届きました
-              </h2>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {contact.contact_name}さんから別日提案があります
-              </p>
-            </div>
-
-            {isLoadingReply ? (
-              <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                読み込み中...
-              </div>
-            ) : replyData ? (
-              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 space-y-2 text-sm">
-                {replyData.alternative_candidates && replyData.alternative_candidates.length > 0 && (
-                  <div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">提案日時</span>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      {replyData.alternative_candidates[0].date} {replyData.alternative_candidates[0].time}
-                    </span>
+            {/* スクロールエリア */}
+            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3">
+              {/* 未送信 draft があれば最上部に表示 */}
+              {draft && (
+                <div className="rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20 p-3 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm" role="img" aria-label="未送信">📋</span>
+                    <span className="text-xs font-semibold text-orange-700 dark:text-orange-300">未送信のURLがあります</span>
                   </div>
-                )}
-                <div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">所要時間</span>
-                  <span className="font-medium text-gray-800 dark:text-gray-200">
-                    {formatDuration(replyData.duration_minutes)}
-                  </span>
+                  <p className="break-all text-xs font-mono text-gray-600 dark:text-gray-400">{draft.url}</p>
+                  <button
+                    type="button"
+                    onClick={handleDraftCopy}
+                    className="flex h-9 w-full items-center justify-center rounded-lg bg-orange-500 dark:bg-orange-600 text-xs font-semibold text-white hover:bg-orange-600 focus:outline-none transition-colors"
+                  >
+                    {isDraftCopied ? 'コピーしました！' : 'URLをコピー'}
+                  </button>
                 </div>
-                {replyData.note && (
-                  <div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">備考</span>
-                    <span className="text-gray-800 dark:text-gray-200">{replyData.note}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="py-2 text-center text-sm text-gray-500 dark:text-gray-400">
-                詳細を取得できませんでした
-              </div>
-            )}
+              )}
 
-            <button
-              type="button"
-              onClick={() => { window.location.href = `/request/${contact.id}` }}
-              className="flex h-11 w-full items-center justify-center rounded-xl bg-blue-600 dark:bg-blue-700 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
-            >
-              新しいリクエストを送る
-            </button>
+              {/* ミーティング履歴 */}
+              {isLoadingHistory ? (
+                <div className="py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                  読み込み中...
+                </div>
+              ) : historyItems.length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                  まだリクエストがありません
+                </div>
+              ) : (
+                historyItems.map(item => {
+                  const isConfirmed = item.confirmed_index !== null || locallyConfirmedIds.has(item.id)
+                  const hasReply = item.replied_at !== null && !locallyConfirmedIds.has(item.id)
+                  const confirmedCandidate =
+                    item.confirmed_index !== null && item.candidates?.[item.confirmed_index]
+                      ? item.candidates[item.confirmed_index]
+                      : null
+                  const meetingUrl = `${origin}/r/${item.id}`
 
-            <button
-              type="button"
-              onClick={handleManualConfirm}
-              disabled={isConfirming}
-              className="flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors disabled:opacity-60"
-            >
-              {isConfirming ? '確定中...' : '手動で確定する'}
-            </button>
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 space-y-2"
+                    >
+                      {/* 上部: 日付 + ステータスバッジ */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                            {formatDate(item.created_at)}
+                          </span>
+                          <p className="mt-0.5 text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+                            {item.purpose}
+                          </p>
+                        </div>
+                        {isConfirmed ? (
+                          <span className="shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                            ✅ 確定
+                          </span>
+                        ) : hasReply ? (
+                          <span className="shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                            📬 返信あり
+                          </span>
+                        ) : (
+                          <span className="shrink-0 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                            ⏳ 確定待ち
+                          </span>
+                        )}
+                      </div>
 
-            <button
-              type="button"
-              onClick={() => setShowReplyModal(false)}
-              className="flex h-10 w-full items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none transition-colors"
-            >
-              閉じる
-            </button>
+                      {/* 候補日 */}
+                      {item.candidates && item.candidates.length > 0 && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          候補: {item.candidates.map((c, i) => (
+                            <span key={i}>{i > 0 ? '・' : ''}{c.date} {c.time}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 確定済みの場合: 確定日時 */}
+                      {isConfirmed && confirmedCandidate && (
+                        <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                          確定: {confirmedCandidate.date} {confirmedCandidate.time}
+                          {item.duration_minutes != null && ` • ${formatDuration(item.duration_minutes)}`}
+                        </div>
+                      )}
+                      {isConfirmed && !confirmedCandidate && (
+                        <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                          確定済み
+                          {item.duration_minutes != null && ` • ${formatDuration(item.duration_minutes)}`}
+                        </div>
+                      )}
+
+                      {/* 返信あり: 別日提案内容 + 手動確定ボタン */}
+                      {hasReply && (
+                        <div className="space-y-2">
+                          {item.alternative_candidates && item.alternative_candidates.length > 0 && (
+                            <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 px-2.5 py-2 text-xs space-y-0.5">
+                              <p className="font-semibold text-blue-700 dark:text-blue-300">別日提案:</p>
+                              {item.alternative_candidates.map((c, i) => (
+                                <p key={i} className="text-blue-600 dark:text-blue-400">
+                                  {c.date} {c.time}
+                                  {item.duration_minutes != null && ` • ${formatDuration(item.duration_minutes)}`}
+                                </p>
+                              ))}
+                              {item.note && (
+                                <p className="text-blue-600 dark:text-blue-400">備考: {item.note}</p>
+                              )}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleManualConfirmItem(item.id)}
+                            disabled={isConfirming}
+                            className="flex h-9 w-full items-center justify-center rounded-lg bg-emerald-600 dark:bg-emerald-700 text-xs font-semibold text-white hover:bg-emerald-700 focus:outline-none transition-colors disabled:opacity-60"
+                          >
+                            {isConfirming ? '確定中...' : '手動で確定する'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* URL コピー */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <span className="flex-1 truncate text-xs font-mono text-gray-400 dark:text-gray-500">
+                          {meetingUrl}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyMeetingUrl(item.id, meetingUrl)}
+                          className="shrink-0 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none transition-colors"
+                        >
+                          {copiedMeetingId === item.id ? '✓' : 'コピー'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            {/* フッター */}
+            <div className="px-4 pb-4 pt-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
+              <button
+                type="button"
+                onClick={() => { window.location.href = `/request/${contact.id}` }}
+                className="flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+              >
+                新しいリクエストを送る
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(false)}
+                className="flex h-10 w-full items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none transition-colors"
+              >
+                閉じる
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -498,16 +521,10 @@ function Character({ contact, liveRepliedCount, index, isCrown, onTap, onManualC
         onClick={handleClick}
         role="button"
         tabIndex={0}
-        aria-label={`${contact.contact_name}にリクエストを送る`}
+        aria-label={`${contact.contact_name}のリクエスト履歴を見る`}
         onKeyDown={e => {
           if (e.key === 'Enter' || e.key === ' ') {
-            if (draft) {
-              setShowDraftModal(true)
-            } else if (showReplied) {
-              openReplyModal()
-            } else {
-              onTap(contact.id)
-            }
+            openHistoryModal()
           }
         }}
       >
@@ -581,8 +598,6 @@ function Character({ contact, liveRepliedCount, index, isCrown, onTap, onManualC
 type Props = { contacts: FarmContactWithCount[] }
 
 export default function FarmCharacters({ contacts }: Props) {
-  const router = useRouter()
-
   // ポーリングで取得した最新の repliedCount をキャラID別に保持する
   const [liveRepliedCounts, setLiveRepliedCounts] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {}
@@ -603,13 +618,12 @@ export default function FarmCharacters({ contacts }: Props) {
         const supabase = createSupabaseBrowserClient()
         const { data } = await supabase
           .from('meetings')
-          .select('farm_contact_id, replied_at, confirmed_index, manually_confirmed')
+          .select('farm_contact_id, replied_at, confirmed_index')
           .in('farm_contact_id', contactIds)
-          .or('replied_at.not.is.null,confirmed_index.not.is.null,manually_confirmed.eq.true')
+          .or('replied_at.not.is.null,confirmed_index.not.is.null')
 
         if (!data) return
 
-        // farm_contact_id ごとに replied_at IS NOT NULL の件数を集計
         const counts: Record<string, number> = {}
         for (const id of contactIds) {
           counts[id] = 0
@@ -628,14 +642,11 @@ export default function FarmCharacters({ contacts }: Props) {
       }
     }
 
-    // 即時実行してから間隔ポーリング開始
     fetchReplied()
     const intervalId = setInterval(fetchReplied, 20000)
 
     return () => clearInterval(intervalId)
   }, [contacts])
-
-  const handleTap = useCallback((id: string) => router.push(`/request/${id}`), [router])
 
   // 手動確定後に liveRepliedCounts を 0 にリセットする
   const handleManualConfirmed = useCallback((contactId: string) => {
@@ -666,7 +677,6 @@ export default function FarmCharacters({ contacts }: Props) {
           liveRepliedCount={liveRepliedCounts[contact.id] ?? contact.repliedCount}
           index={index}
           isCrown={contact.id === crownId}
-          onTap={handleTap}
           onManualConfirmed={handleManualConfirmed}
         />
       ))}
