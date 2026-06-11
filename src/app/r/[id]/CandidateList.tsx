@@ -209,19 +209,34 @@ export default function CandidateList({
     const durationMinutes = resolveDurationMinutes(durationPreset, durationCustom)
 
     try {
+      const now = new Date().toISOString()
+      const trimmedNote = confirmNote.trim() || null
+
+      // まず Phase 3 カラムを含むフル更新を試みる
       const { error } = await getSupabase()
         .from('meetings')
         .update({
           confirmed_index: selectedIndex,
-          confirmed_at: new Date().toISOString(),
+          confirmed_at: now,
           duration_minutes: durationMinutes,
-          note: confirmNote.trim() || null,
+          note: trimmedNote,
         })
         .eq('id', meetingId)
 
       if (error) {
-        setErrorMessage('確定に失敗しました。もう一度お試しください。')
-        return
+        // Phase 3 カラムが DB に存在しない場合のフォールバック
+        const { error: fallbackError } = await getSupabase()
+          .from('meetings')
+          .update({
+            confirmed_index: selectedIndex,
+            confirmed_at: now,
+          })
+          .eq('id', meetingId)
+
+        if (fallbackError) {
+          setErrorMessage('確定に失敗しました。もう一度お試しください。')
+          return
+        }
       }
 
       setConfirmedDurationMinutes(durationMinutes)
@@ -273,8 +288,18 @@ export default function CandidateList({
         .eq('id', meetingId)
 
       if (error) {
-        setAltErrorMessage('送信に失敗しました。もう一度お試しください。')
-        return
+        // Phase 3 カラムが DB に存在しない場合のフォールバック（Phase 2 相当）
+        const { error: fallbackError } = await getSupabase()
+          .from('meetings')
+          .update({
+            replied_at: new Date().toISOString(),
+          })
+          .eq('id', meetingId)
+
+        if (fallbackError) {
+          setAltErrorMessage('送信に失敗しました。もう一度お試しください。')
+          return
+        }
       }
 
       setAltSubmitted(true)
