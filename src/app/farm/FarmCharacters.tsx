@@ -104,12 +104,13 @@ type WalkState = { x: number; y: number; vx: number; vy: number; timer: number }
 type CharacterProps = {
   contact: FarmContactWithCount
   liveRepliedCount: number
+  liveConfirmedCount: number
   index: number
   isCrown: boolean
   onManualConfirmed: (contactId: string) => void
 }
 
-function Character({ contact, liveRepliedCount, index, isCrown, onManualConfirmed }: CharacterProps) {
+function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCrown, onManualConfirmed }: CharacterProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const rafRef = useRef<number>(0)
@@ -143,7 +144,8 @@ function Character({ contact, liveRepliedCount, index, isCrown, onManualConfirme
   })
 
   const effectiveRepliedCount = liveRepliedCount
-  const { confirmedCount, pendingCount } = contact
+  const confirmedCount = liveConfirmedCount
+  const { pendingCount } = contact
   const isAsleep = confirmedCount === 0
   const baseSpeed = isAsleep ? 0.12 : 0.4 + seedRand(index, 6) * 0.25
   const hasDraft = draft !== null
@@ -611,52 +613,60 @@ function Character({ contact, liveRepliedCount, index, isCrown, onManualConfirme
 type Props = { contacts: FarmContactWithCount[] }
 
 export default function FarmCharacters({ contacts }: Props) {
-  // ポーリングで取得した最新の repliedCount をキャラID別に保持する
-  const [liveRepliedCounts, setLiveRepliedCounts] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {}
+  const initCounts = useCallback(() => {
+    const replied: Record<string, number> = {}
+    const confirmed: Record<string, number> = {}
     for (const c of contacts) {
-      initial[c.id] = c.repliedCount
+      replied[c.id] = c.repliedCount
+      confirmed[c.id] = c.confirmedCount
     }
-    return initial
-  })
+    return { replied, confirmed }
+  }, [contacts])
 
-  // 20秒間隔でポーリングして replied_at の状況を取得する
+  const [liveRepliedCounts, setLiveRepliedCounts] = useState<Record<string, number>>(
+    () => initCounts().replied
+  )
+  const [liveConfirmedCounts, setLiveConfirmedCounts] = useState<Record<string, number>>(
+    () => initCounts().confirmed
+  )
+
+  // 20秒間隔でポーリングして replied / confirmed の状況を取得する
   useEffect(() => {
     if (contacts.length === 0) return
 
     const contactIds = contacts.map(c => c.id)
 
-    const fetchReplied = async () => {
+    const fetchCounts = async () => {
       try {
         const supabase = createSupabaseBrowserClient()
         const { data } = await supabase
           .from('meetings')
           .select('farm_contact_id, replied_at, confirmed_index')
           .in('farm_contact_id', contactIds)
-          .or('replied_at.not.is.null,confirmed_index.not.is.null')
 
         if (!data) return
 
-        const counts: Record<string, number> = {}
+        const repliedMap: Record<string, number> = {}
+        const confirmedMap: Record<string, number> = {}
         for (const id of contactIds) {
-          counts[id] = 0
+          repliedMap[id] = 0
+          confirmedMap[id] = 0
         }
         for (const row of data as MeetingReplyRow[]) {
-          if (row.replied_at !== null) {
-            const cid = row.farm_contact_id
-            if (cid in counts) {
-              counts[cid] = (counts[cid] ?? 0) + 1
-            }
-          }
+          const cid = row.farm_contact_id
+          if (!(cid in repliedMap)) continue
+          if (row.replied_at !== null) repliedMap[cid] = (repliedMap[cid] ?? 0) + 1
+          if (row.confirmed_index !== null) confirmedMap[cid] = (confirmedMap[cid] ?? 0) + 1
         }
-        setLiveRepliedCounts(counts)
+        setLiveRepliedCounts(repliedMap)
+        setLiveConfirmedCounts(confirmedMap)
       } catch {
         // ポーリングエラーは無視する
       }
     }
 
-    fetchReplied()
-    const intervalId = setInterval(fetchReplied, 20000)
+    fetchCounts()
+    const intervalId = setInterval(fetchCounts, 20000)
 
     return () => clearInterval(intervalId)
   }, [contacts])
@@ -664,6 +674,7 @@ export default function FarmCharacters({ contacts }: Props) {
   // 手動確定後に liveRepliedCounts を 0 にリセットする
   const handleManualConfirmed = useCallback((contactId: string) => {
     setLiveRepliedCounts(prev => ({ ...prev, [contactId]: 0 }))
+    setLiveConfirmedCounts(prev => ({ ...prev, [contactId]: (prev[contactId] ?? 0) + 1 }))
   }, [])
 
   if (contacts.length === 0) {
@@ -678,8 +689,8 @@ export default function FarmCharacters({ contacts }: Props) {
     )
   }
 
-  const maxCount = Math.max(...contacts.map(c => c.confirmedCount))
-  const crownId = contacts.find(c => c.confirmedCount === maxCount)?.id ?? ''
+  const maxCount = Math.max(...contacts.map(c => liveConfirmedCounts[c.id] ?? c.confirmedCount))
+  const crownId = contacts.find(c => (liveConfirmedCounts[c.id] ?? c.confirmedCount) === maxCount)?.id ?? ''
 
   return (
     <>
@@ -688,6 +699,7 @@ export default function FarmCharacters({ contacts }: Props) {
           key={contact.id}
           contact={contact}
           liveRepliedCount={liveRepliedCounts[contact.id] ?? contact.repliedCount}
+          liveConfirmedCount={liveConfirmedCounts[contact.id] ?? contact.confirmedCount}
           index={index}
           isCrown={contact.id === crownId}
           onManualConfirmed={handleManualConfirmed}
