@@ -196,7 +196,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
       )
     }
 
-    // 「後で」を選んだ後: 農園へ自動遷移の案内
+    // 「後で」を選んだ後: URLコピー + 農園へ戻る
     if (sendChoice === 'later') {
       return (
         <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
@@ -206,13 +206,27 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
               下書きを保存しました
             </h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              農園から{contactName}さんをタップするといつでもURLを確認できます
+              {contactName}さんにこのURLを送ってください
             </p>
           </div>
 
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
+            <p className="break-all text-sm font-mono text-gray-700 dark:text-gray-300">
+              {submittedInfo.url}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-colors"
+          >
+            {isCopied ? 'コピーしました！' : 'URLをコピー'}
+          </button>
+
           <a
             href="/farm"
-            className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-colors"
+            className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-base font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
           >
             農園に戻る
           </a>

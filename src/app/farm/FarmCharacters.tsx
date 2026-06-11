@@ -295,6 +295,12 @@ function Character({ contact, liveRepliedCount, index, isCrown, onManualConfirme
     }
   }
 
+  function handleDraftSent() {
+    localStorage.removeItem(`phase3_draft_${contact.id}`)
+    setDraft(null)
+    setShowHistoryModal(false)
+  }
+
   async function copyMeetingUrl(meetingId: string, url: string) {
     try {
       await navigator.clipboard.writeText(url)
@@ -363,6 +369,13 @@ function Character({ contact, liveRepliedCount, index, isCrown, onManualConfirme
                     className="flex h-9 w-full items-center justify-center rounded-lg bg-orange-500 dark:bg-orange-600 text-xs font-semibold text-white hover:bg-orange-600 focus:outline-none transition-colors"
                   >
                     {isDraftCopied ? 'コピーしました！' : 'URLをコピー'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDraftSent}
+                    className="flex h-9 w-full items-center justify-center rounded-lg border border-orange-300 dark:border-orange-700 text-xs font-semibold text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/40 focus:outline-none transition-colors"
+                  >
+                    送信済みにする（未送信を消す）
                   </button>
                 </div>
               )}
