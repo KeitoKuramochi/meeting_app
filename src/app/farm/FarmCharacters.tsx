@@ -715,9 +715,11 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
             />
           )}
           {showReplied && (
-            <span className="absolute pointer-events-none flex" style={{ top: -6, right: -6 }}>
-              <span className="animate-ping absolute inline-flex h-3.5 w-3.5 rounded-full opacity-75" style={{ background: '#ef4444' }} />
-              <span className="relative inline-flex rounded-full h-3.5 w-3.5" style={{ background: '#dc2626', boxShadow: '0 0 0 2px white' }} />
+            <span
+              className="absolute pointer-events-none font-extrabold"
+              style={{ top: -8, right: -6, fontSize: 14, color: '#dc2626', textShadow: '0 0 4px white, 0 0 4px white', lineHeight: 1 }}
+            >
+              ！
             </span>
           )}
         </div>
