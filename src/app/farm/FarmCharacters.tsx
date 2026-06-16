@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FarmContactWithCount } from '@/types/farm'
-import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
+import { getSupabase } from '@/lib/supabase'
 import { Candidate } from '@/types/meeting'
 
 // localStorage に保存される draft の型
@@ -295,7 +295,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
 
   const fetchHistory = useCallback(async () => {
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabase()
       const { data } = await supabase
         .from('meetings')
         .select('id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note, manually_confirmed')
@@ -379,7 +379,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
     if (!ok) return
     setIsConfirming(true)
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = getSupabase()
       await supabase
         .from('meetings')
         .update({ manually_confirmed: true })
@@ -751,13 +751,15 @@ export default function FarmCharacters({ contacts }: Props) {
 
     const fetchCounts = async () => {
       try {
-        const supabase = createSupabaseBrowserClient()
-        const { data } = await supabase
+        const supabase = getSupabase()
+        const { data, error } = await supabase
           .from('meetings')
           .select('farm_contact_id, replied_at, confirmed_index, manually_confirmed')
           .in('farm_contact_id', contactIds)
 
-        if (!data) return
+        // エラー・null・空配列の場合はリセットせず現状維持
+        // 空配列はRLSブロック時にも返るため、0リセットを防ぐ
+        if (error || !data || data.length === 0) return
 
         const repliedMap: Record<string, number> = {}
         const confirmedMap: Record<string, number> = {}
