@@ -20,18 +20,6 @@ type FormErrors = {
 const MAX_CANDIDATES = 5
 const MIN_DATE = new Date().toISOString().split('T')[0]
 
-// 06:00〜22:00 の30分刻み（33個）
-const TIME_OPTIONS: string[] = (() => {
-  const options: string[] = []
-  for (let h = 6; h <= 22; h++) {
-    options.push(`${String(h).padStart(2, '0')}:00`)
-    if (h < 22) {
-      options.push(`${String(h).padStart(2, '0')}:30`)
-    }
-  }
-  return options
-})()
-
 function createEmptyCandidate(): Candidate {
   return { date: '', time: '' }
 }
@@ -58,9 +46,11 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
     setCandidates((prev) => prev.filter((_, i) => i !== index))
   }
 
-  function updateCandidate(index: number, field: keyof Candidate, value: string) {
+  // datetime-local の値 ("2024-01-15T09:00") を date と time に分解してセットする
+  function updateCandidateDatetime(index: number, value: string) {
+    const [date = '', time = ''] = value.split('T')
     setCandidates((prev) =>
-      prev.map((c, i) => (i === index ? { ...c, [field]: value } : c))
+      prev.map((c, i) => (i === index ? { ...c, date, time } : c))
     )
   }
 
@@ -361,30 +351,19 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
               <span className="shrink-0 text-xs font-medium w-5 text-center" style={{ color: '#8b6914' }}>
                 {index + 1}
               </span>
-              <div className="flex flex-1 flex-col sm:flex-row gap-2">
+              <div className="flex flex-1 flex-col gap-1">
                 <input
-                  type="date"
-                  value={candidate.date}
-                  min={MIN_DATE}
-                  onChange={(e) => updateCandidate(index, 'date', e.target.value)}
-                  aria-label={`候補日${index + 1}の日付`}
-                  className="flex-1 h-11 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  type="datetime-local"
+                  value={candidate.date && candidate.time ? `${candidate.date}T${candidate.time}` : ''}
+                  min={`${MIN_DATE}T00:00`}
+                  onChange={(e) => updateCandidateDatetime(index, e.target.value)}
+                  aria-label={`候補日${index + 1}の日時`}
+                  className="w-full h-11 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
                 />
-                <select
-                  value={candidate.time}
-                  onChange={(e) => updateCandidate(index, 'time', e.target.value)}
-                  aria-label={`候補日${index + 1}の時刻`}
-                  className="w-full sm:w-36 h-11 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                  style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
-                >
-                  <option value="">時間を選択</option>
-                  {TIME_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                <p className="text-xs pl-1" style={{ color: '#8b6914' }}>
+                  開始時刻を設定してください
+                </p>
               </div>
               {candidates.length > 1 && (
                 <button
