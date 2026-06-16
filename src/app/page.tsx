@@ -43,9 +43,12 @@ export default function TopPage() {
             ログインして農園をはじめる
           </p>
           <OAuthLoginButtons />
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center flex flex-col gap-2">
             <Link href="/demo" className="text-sm font-medium hover:underline focus:outline-none" style={{ color: '#4a7c59' }}>
               ログインなしでデモを見る →
+            </Link>
+            <Link href="/guide" className="text-sm underline" style={{ color: '#92400e' }}>
+              使い方を見る →
             </Link>
           </div>
         </div>

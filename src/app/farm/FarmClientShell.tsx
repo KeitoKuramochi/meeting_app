@@ -148,6 +148,13 @@ export default function FarmClientShell({ contacts }: Props) {
                 >
                   ＋ 相手を追加する
                 </Link>
+                <Link
+                  href="/guide"
+                  className="mt-3 text-sm underline inline-block"
+                  style={{ color: '#92400e' }}
+                >
+                  使い方を見る →
+                </Link>
               </div>
             </div>
           )}
