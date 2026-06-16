@@ -192,11 +192,16 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
       const img = imgRef.current
       const s = stateRef.current
 
-      s.x += s.vx
-      s.y += s.vy
+      // 画面幅に関わらずピクセル速度を375px基準に統一（デスクトップ高速化防止）
+      const parentEl = el?.parentElement
+      const cw = parentEl?.offsetWidth ?? 375
+      const sf = Math.min(1, 375 / cw)
 
-      if (s.x < 2)  { s.x = 2;  s.vx =  Math.abs(s.vx) }
-      if (s.x > 96) { s.x = 96; s.vx = -Math.abs(s.vx) }
+      s.x += s.vx * sf
+      s.y += s.vy * sf
+
+      if (s.x < 8)  { s.x = 8;  s.vx =  Math.abs(s.vx) }
+      if (s.x > 92) { s.x = 92; s.vx = -Math.abs(s.vx) }
       if (s.y < 3)  { s.y = 3;  s.vy =  Math.abs(s.vy) }
       if (s.y > 72) { s.y = 72; s.vy = -Math.abs(s.vy) }
 
@@ -238,7 +243,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
       const parent = el?.parentElement
       if (!el || !parent) return
       const rect = parent.getBoundingClientRect()
-      const x = Math.max(2, Math.min(96, ((clientX - rect.left) / rect.width) * 100))
+      const x = Math.max(8, Math.min(92, ((clientX - rect.left) / rect.width) * 100))
       const y = Math.max(3, Math.min(72, ((rect.bottom - clientY) / rect.height) * 100))
       stateRef.current.x = x
       stateRef.current.y = y
@@ -608,6 +613,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
         style={{
           left: `${stateRef.current.x}%`,
           bottom: `${stateRef.current.y}%`,
+          transform: 'translateX(-50%)',
           cursor: grabbing ? 'grabbing' : 'grab',
           zIndex: grabbing ? 50 : 1,
         }}
