@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { FarmContactWithCount } from '@/types/farm'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 import { Candidate } from '@/types/meeting'
@@ -12,7 +13,6 @@ type DraftData = {
   savedAt: string
 }
 
-// ミーティング履歴の表示用型（manually_confirmed は DB に存在しない可能性があるため除外）
 type MeetingHistoryItem = {
   id: string
   student_name: string
@@ -25,6 +25,7 @@ type MeetingHistoryItem = {
   alternative_candidates: Candidate[] | null
   duration_minutes: number | null
   note: string | null
+  manually_confirmed: boolean | null
 }
 
 // Supabase から取得する meetings の部分型（ポーリング用）
@@ -112,12 +113,14 @@ type CharacterProps = {
 }
 
 function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCrown, onManualConfirmed }: CharacterProps) {
+  const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const rafRef = useRef<number>(0)
   const isDraggingRef = useRef(false)
   const hasMovedRef = useRef(false)
   const touchTappedRef = useRef(false)
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
   const [grabbing, setGrabbing] = useState(false)
 
   // localStorage の draft
@@ -285,7 +288,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
       const supabase = createSupabaseBrowserClient()
       const { data } = await supabase
         .from('meetings')
-        .select('id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note')
+        .select('id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note, manually_confirmed')
         .eq('farm_contact_id', contact.id)
         .order('created_at', { ascending: false })
       setHistoryItems((data as MeetingHistoryItem[]) ?? [])
@@ -306,6 +309,10 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
     // キャッシュがなければローディング表示しつつ取得
     if (historyItems.length === 0) setIsLoadingHistory(true)
     fetchHistory()
+    // スクロールを先頭にリセット（次のフレームで DOM が確実に存在）
+    requestAnimationFrame(() => {
+      if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0
+    })
   }, [fetchHistory, historyItems.length])
 
   // タッチタップを直接処理（touchstart で e.preventDefault しないと click が来ない端末対策）
@@ -402,7 +409,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
             </div>
 
             {/* スクロールエリア */}
-            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3" style={{ background: '#fef7e4' }}>
+            <div ref={scrollAreaRef} className="overflow-y-auto flex-1 px-4 py-3 space-y-3" style={{ background: '#fef7e4' }}>
               {/* 未送信 draft があれば最上部に表示 */}
               {draft && (
                 <div className="rounded-xl p-3 space-y-2" style={{ background: '#fff3e0', border: '1.5px solid #f59e0b' }}>
@@ -414,14 +421,14 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
                   <button
                     type="button"
                     onClick={handleDraftCopy}
-                    className="farm-btn-gold flex h-9 w-full items-center justify-center text-xs focus:outline-none transition-colors"
+                    className="farm-btn-gold flex h-11 w-full items-center justify-center text-xs focus:outline-none transition-colors"
                   >
                     {isDraftCopied ? 'コピーしました！' : 'URLをコピー'}
                   </button>
                   <button
                     type="button"
                     onClick={handleDraftSent}
-                    className="flex h-9 w-full items-center justify-center rounded-lg text-xs font-semibold focus:outline-none transition-colors"
+                    className="flex h-11 w-full items-center justify-center rounded-lg text-xs font-semibold focus:outline-none transition-colors"
                     style={{ border: '1.5px solid #f59e0b', color: '#92400e', background: '#fffbeb' }}
                   >
                     送信済みにする（未送信を消す）
@@ -440,7 +447,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
                 </div>
               ) : (
                 historyItems.map(item => {
-                  const isConfirmed = item.confirmed_index !== null || locallyConfirmedIds.has(item.id)
+                  const isConfirmed = item.confirmed_index !== null || item.manually_confirmed === true || locallyConfirmedIds.has(item.id)
                   const hasReply = item.replied_at !== null && !locallyConfirmedIds.has(item.id)
                   const confirmedCandidate =
                     item.confirmed_index !== null && item.candidates?.[item.confirmed_index]
@@ -523,7 +530,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
                             type="button"
                             onClick={() => handleManualConfirmItem(item.id)}
                             disabled={isConfirming}
-                            className="farm-btn flex h-9 w-full items-center justify-center text-xs focus:outline-none transition-colors disabled:opacity-60"
+                            className="farm-btn flex h-11 w-full items-center justify-center text-xs focus:outline-none transition-colors disabled:opacity-60"
                           >
                             {isConfirming ? '確定中...' : '手動で確定する'}
                           </button>
@@ -555,7 +562,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
               style={{ borderTop: '2px solid #d4a853' }}>
               <button
                 type="button"
-                onClick={() => { window.location.href = `/request/${contact.id}` }}
+                onClick={() => router.push(`/request/${contact.id}`)}
                 className="farm-btn flex h-11 w-full items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
               >
                 新しいリクエストを送る
