@@ -133,6 +133,9 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [copiedMeetingId, setCopiedMeetingId] = useState<string | null>(null)
 
+  // リクエストページへのナビゲーション中フラグ
+  const [isNavigating, setIsNavigating] = useState(false)
+
   // 手動確定
   const [isConfirming, setIsConfirming] = useState(false)
   const [localManualConfirmed, setLocalManualConfirmed] = useState(false)
@@ -562,10 +565,22 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
               style={{ borderTop: '2px solid #d4a853' }}>
               <button
                 type="button"
-                onClick={() => router.push(`/request/${contact.id}`)}
-                className="farm-btn flex h-11 w-full items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                onClick={() => {
+                  setIsNavigating(true)
+                  router.push(`/request/${contact.id}`)
+                }}
+                disabled={isNavigating}
+                className="farm-btn flex h-11 w-full items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-75"
               >
-                新しいリクエストを送る
+                {isNavigating ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                    移動中...
+                  </span>
+                ) : '新しいリクエストを送る'}
               </button>
               <button
                 type="button"
