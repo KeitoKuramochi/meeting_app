@@ -107,12 +107,13 @@ type CharacterProps = {
   contact: FarmContactWithCount
   liveRepliedCount: number
   liveConfirmedCount: number
+  livePendingCount: number
   index: number
   isCrown: boolean
   onManualConfirmed: (contactId: string) => void
 }
 
-function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCrown, onManualConfirmed }: CharacterProps) {
+function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingCount, index, isCrown, onManualConfirmed }: CharacterProps) {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
@@ -132,6 +133,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [historyItems, setHistoryItems] = useState<MeetingHistoryItem[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [historyError, setHistoryError] = useState(false)
   const [copiedMeetingId, setCopiedMeetingId] = useState<string | null>(null)
 
   // リクエストページへのナビゲーション中フラグ
@@ -167,7 +169,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
 
   const effectiveRepliedCount = liveRepliedCount
   const confirmedCount = liveConfirmedCount
-  const { pendingCount } = contact
+  const pendingCount = livePendingCount
   const isAsleep = confirmedCount === 0
   const baseSpeed = isAsleep ? 0.12 : 0.4 + seedRand(index, 6) * 0.25
   const hasDraft = draft !== null
@@ -302,16 +304,21 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
   }, [])
 
   const fetchHistory = useCallback(async () => {
+    setHistoryError(false)
     try {
       const supabase = getSupabase()
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('meetings')
         .select('id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note, manually_confirmed')
         .eq('farm_contact_id', contact.id)
         .order('created_at', { ascending: false })
-      setHistoryItems((data as MeetingHistoryItem[]) ?? [])
+      if (error) {
+        setHistoryError(true)
+      } else {
+        setHistoryItems((data as MeetingHistoryItem[]) ?? [])
+      }
     } catch {
-      // ignore
+      setHistoryError(true)
     } finally {
       setIsLoadingHistory(false)
     }
@@ -326,6 +333,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
     // タップ後5秒間キャラをゆっくり動かしてタップしやすくする
     slowdownUntilRef.current = Date.now() + 5000
     setShowHistoryModal(true)
+    setHistoryError(false)
     // キャッシュがなければローディング表示しつつ取得
     if (historyItems.length === 0) setIsLoadingHistory(true)
     fetchHistory()
@@ -461,6 +469,19 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
                 <div className="py-8 text-center text-sm" style={{ color: '#8b6914' }}>
                   読み込み中...
                 </div>
+              ) : historyError ? (
+                <div className="py-8 text-center">
+                  <p className="text-sm mb-3" style={{ color: '#b91c1c' }}>
+                    履歴の読み込みに失敗しました
+                  </p>
+                  <button
+                    type="button"
+                    onClick={fetchHistory}
+                    className="farm-btn text-sm px-4 py-2 focus:outline-none"
+                  >
+                    再試行
+                  </button>
+                </div>
               ) : historyItems.length === 0 ? (
                 <div className="py-8 text-center text-sm" style={{ color: '#8b6914' }}>
                   まだリクエストがありません
@@ -468,7 +489,8 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
               ) : (
                 historyItems.map(item => {
                   const isConfirmed = item.confirmed_index !== null || item.manually_confirmed === true || locallyConfirmedIds.has(item.id)
-                  const hasReply = item.replied_at !== null && !locallyConfirmedIds.has(item.id)
+                  // 確定済みの場合は返信セクションを表示しない
+                  const hasReply = item.replied_at !== null && !isConfirmed
                   const confirmedCandidate =
                     item.confirmed_index !== null && item.candidates?.[item.confirmed_index]
                       ? item.candidates[item.confirmed_index]
@@ -746,11 +768,13 @@ export default function FarmCharacters({ contacts }: Props) {
   const initCounts = useCallback(() => {
     const replied: Record<string, number> = {}
     const confirmed: Record<string, number> = {}
+    const pending: Record<string, number> = {}
     for (const c of contacts) {
       replied[c.id] = c.repliedCount
       confirmed[c.id] = c.confirmedCount
+      pending[c.id] = c.pendingCount
     }
-    return { replied, confirmed }
+    return { replied, confirmed, pending }
   }, [contacts])
 
   const [liveRepliedCounts, setLiveRepliedCounts] = useState<Record<string, number>>(
@@ -758,6 +782,9 @@ export default function FarmCharacters({ contacts }: Props) {
   )
   const [liveConfirmedCounts, setLiveConfirmedCounts] = useState<Record<string, number>>(
     () => initCounts().confirmed
+  )
+  const [livePendingCounts, setLivePendingCounts] = useState<Record<string, number>>(
+    () => initCounts().pending
   )
 
   // ポーリング用 fetchCounts を ref に保持（visibilitychange から呼べるようにする）
@@ -777,23 +804,35 @@ export default function FarmCharacters({ contacts }: Props) {
           .in('farm_contact_id', contactIds)
 
         // エラー・null・空配列の場合はリセットせず現状維持
-        // 空配列はRLSブロック時にも返るため、0リセットを防ぐ
         if (error || !data || data.length === 0) return
 
         const repliedMap: Record<string, number> = {}
         const confirmedMap: Record<string, number> = {}
+        const pendingMap: Record<string, number> = {}
         for (const id of contactIds) {
           repliedMap[id] = 0
           confirmedMap[id] = 0
+          pendingMap[id] = 0
         }
         for (const row of data as MeetingReplyRow[]) {
           const cid = row.farm_contact_id
           if (!(cid in repliedMap)) continue
-          if (row.replied_at !== null) repliedMap[cid] = (repliedMap[cid] ?? 0) + 1
-          if (row.confirmed_index !== null || row.manually_confirmed === true) confirmedMap[cid] = (confirmedMap[cid] ?? 0) + 1
+          const isConfirmedRow = row.confirmed_index !== null || row.manually_confirmed === true
+          // 確定済み
+          if (isConfirmedRow) {
+            confirmedMap[cid] = (confirmedMap[cid] ?? 0) + 1
+          } else {
+            // 未確定 → 確定待ちカウント
+            pendingMap[cid] = (pendingMap[cid] ?? 0) + 1
+            // 未確定 かつ 返信あり
+            if (row.replied_at !== null) {
+              repliedMap[cid] = (repliedMap[cid] ?? 0) + 1
+            }
+          }
         }
         setLiveRepliedCounts(repliedMap)
         setLiveConfirmedCounts(confirmedMap)
+        setLivePendingCounts(pendingMap)
       } catch {
         // ポーリングエラーは無視する
       }
@@ -815,10 +854,11 @@ export default function FarmCharacters({ contacts }: Props) {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
-  // 手動確定後に liveRepliedCounts を 0 にリセットする
+  // 手動確定後に各カウントをローカルで即時更新する
   const handleManualConfirmed = useCallback((contactId: string) => {
     setLiveRepliedCounts(prev => ({ ...prev, [contactId]: 0 }))
     setLiveConfirmedCounts(prev => ({ ...prev, [contactId]: (prev[contactId] ?? 0) + 1 }))
+    setLivePendingCounts(prev => ({ ...prev, [contactId]: Math.max(0, (prev[contactId] ?? 0) - 1) }))
   }, [])
 
   if (contacts.length === 0) {
@@ -844,6 +884,7 @@ export default function FarmCharacters({ contacts }: Props) {
           contact={contact}
           liveRepliedCount={liveRepliedCounts[contact.id] ?? contact.repliedCount}
           liveConfirmedCount={liveConfirmedCounts[contact.id] ?? contact.confirmedCount}
+          livePendingCount={livePendingCounts[contact.id] ?? contact.pendingCount}
           index={index}
           isCrown={contact.id === crownId}
           onManualConfirmed={handleManualConfirmed}

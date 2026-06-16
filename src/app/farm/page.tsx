@@ -84,11 +84,14 @@ async function FarmData({ farm }: { farm: Farm }) {
         .in('farm_contact_id', contactIds)
         .is('confirmed_index', null)
         .returns<{ farm_contact_id: string }[]>(),
+      // replied かつ未確定のものだけをカウント（確定済みには返信バッジを出さない）
       anonSupabase
         .from('meetings')
         .select('farm_contact_id')
         .in('farm_contact_id', contactIds)
         .not('replied_at', 'is', null)
+        .is('confirmed_index', null)
+        .or('manually_confirmed.is.null,manually_confirmed.eq.false')
         .returns<{ farm_contact_id: string }[]>(),
     ])
 

@@ -1,40 +1,73 @@
 'use client'
 
+import { useState } from 'react'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 
 export default function OAuthLoginButtons() {
-  async function handleLogin(provider: 'google' | 'discord') {
-    const supabase = createSupabaseBrowserClient()
-    const origin = window.location.origin
+  const [loadingProvider, setLoadingProvider] = useState<'google' | 'discord' | null>(null)
 
-    await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${origin}/auth/callback`,
-      },
-    })
+  async function handleLogin(provider: 'google' | 'discord') {
+    if (loadingProvider !== null) return
+    setLoadingProvider(provider)
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const origin = window.location.origin
+      await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${origin}/auth/callback` },
+      })
+    } catch {
+      // signInWithOAuth は通常ブラウザリダイレクトするため、ここに到達するのはエラー時のみ
+      setLoadingProvider(null)
+    }
   }
+
+  const isLoading = loadingProvider !== null
 
   return (
     <div className="flex flex-col gap-3 w-full">
       <button
         type="button"
         onClick={() => handleLogin('google')}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white text-base font-semibold text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 transition-colors"
+        disabled={isLoading}
+        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white text-base font-semibold text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
       >
-        <GoogleIcon />
-        Google でログイン
+        {loadingProvider === 'google' ? (
+          <Spinner color="#4285F4" />
+        ) : (
+          <GoogleIcon />
+        )}
+        {loadingProvider === 'google' ? 'ログイン中...' : 'Google でログイン'}
       </button>
 
       <button
         type="button"
         onClick={() => handleLogin('discord')}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-indigo-600 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
+        disabled={isLoading}
+        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-indigo-600 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
       >
-        <DiscordIcon />
-        Discord でログイン
+        {loadingProvider === 'discord' ? (
+          <Spinner color="white" />
+        ) : (
+          <DiscordIcon />
+        )}
+        {loadingProvider === 'discord' ? 'ログイン中...' : 'Discord でログイン'}
       </button>
     </div>
+  )
+}
+
+function Spinner({ color }: { color: string }) {
+  return (
+    <svg
+      className="animate-spin h-5 w-5 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke={color} strokeWidth="4" />
+      <path className="opacity-75" fill={color} d="M4 12a8 8 0 018-8v8H4z" />
+    </svg>
   )
 }
 

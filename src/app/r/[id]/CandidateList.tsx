@@ -96,17 +96,20 @@ function DurationPicker({
         ))}
       </div>
       {selectedPreset === 'other' && (
-        <div className="mt-2 flex items-center gap-2">
-          <input
-            type="number"
-            min={1}
-            max={480}
-            value={customMinutes}
-            onChange={(e) => onCustomChange(e.target.value)}
-            placeholder="分数を入力"
-            className="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-          />
-          <span className="text-sm text-gray-600">分</span>
+        <div className="mt-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={480}
+              value={customMinutes}
+              onChange={(e) => onCustomChange(e.target.value)}
+              placeholder="例：45"
+              className="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            />
+            <span className="text-sm text-gray-600">分</span>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">1〜480分（最大8時間）</p>
         </div>
       )}
     </div>
@@ -387,10 +390,16 @@ export default function CandidateList({
         </p>
       )}
 
+      {showAlternativeForm && (
+        <p className="mb-3 text-sm text-center text-gray-500">
+          別日提案フォームを閉じてから確定できます
+        </p>
+      )}
+
       <button
         type="button"
         onClick={handleConfirm}
-        disabled={isSubmitting}
+        disabled={isSubmitting || showAlternativeForm}
         className="mb-4 flex h-12 w-full items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? '確定中...' : '確定する'}

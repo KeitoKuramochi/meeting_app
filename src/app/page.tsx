@@ -2,7 +2,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import OAuthLoginButtons from './_components/OAuthLoginButtons'
 
-export default function TopPage() {
+type Props = {
+  searchParams: Promise<{ auth_error?: string }>
+}
+
+export default async function TopPage({ searchParams }: Props) {
+  const params = await searchParams
+  const authError = params.auth_error
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden" style={{ background: '#f5ede0' }}>
       {/* Farm background */}
@@ -36,6 +43,18 @@ export default function TopPage() {
             </div>
           ))}
         </div>
+
+        {/* ログインエラー表示 */}
+        {authError && (
+          <div
+            className="w-full rounded-xl px-4 py-3 text-sm"
+            role="alert"
+            style={{ background: '#fef2f2', border: '1.5px solid #fca5a5', color: '#b91c1c' }}
+          >
+            <p className="font-semibold mb-0.5">ログインに失敗しました</p>
+            <p style={{ color: '#dc2626' }}>{decodeURIComponent(authError)}</p>
+          </div>
+        )}
 
         {/* Login */}
         <div className="w-full">
