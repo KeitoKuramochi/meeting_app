@@ -257,9 +257,16 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
       isDraggingRef.current = false
       setGrabbing(false)
       const a = Math.random() * Math.PI * 2
-      stateRef.current.vx = Math.cos(a) * baseSpeed
-      stateRef.current.vy = Math.sin(a) * baseSpeed * 0.35
-      stateRef.current.timer = Math.floor(60 + Math.random() * 120)
+      if (hasMovedRef.current) {
+        // ドロップ後1〜2秒はゆっくり動いてタップしやすくする
+        stateRef.current.vx = Math.cos(a) * baseSpeed * 0.08
+        stateRef.current.vy = Math.sin(a) * baseSpeed * 0.028
+        stateRef.current.timer = Math.floor(90 + Math.random() * 30)
+      } else {
+        stateRef.current.vx = Math.cos(a) * baseSpeed
+        stateRef.current.vy = Math.sin(a) * baseSpeed * 0.35
+        stateRef.current.timer = Math.floor(60 + Math.random() * 120)
+      }
       startAnimation()
     }
 
