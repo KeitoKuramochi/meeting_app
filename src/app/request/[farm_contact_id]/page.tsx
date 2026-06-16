@@ -9,26 +9,36 @@ type Props = {
 export default async function RequestPage({ params }: Props) {
   const { farm_contact_id } = await params
 
-  const { data, error } = await getSupabase()
-    .from('farm_contacts')
-    .select('*')
-    .eq('id', farm_contact_id)
-    .single<FarmContact>()
+  const supabase = getSupabase()
+
+  // 2つのクエリを並列実行してレイテンシを削減
+  const [{ data, error }, { data: confirmedRows }] = await Promise.all([
+    supabase
+      .from('farm_contacts')
+      .select('*')
+      .eq('id', farm_contact_id)
+      .single<FarmContact>(),
+    supabase
+      .from('meetings')
+      .select('id')
+      .eq('farm_contact_id', farm_contact_id)
+      .or('confirmed_index.not.is.null,manually_confirmed.eq.true'),
+  ])
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-emerald-50 dark:bg-gray-950 px-4 py-8">
+      <div className="min-h-screen px-4 py-8" style={{ background: '#f5ede0' }}>
         <div className="mx-auto max-w-lg">
-          <div className="rounded-xl border border-red-200 bg-white dark:bg-gray-900 dark:border-red-800 p-6 text-center shadow-sm">
-            <p className="mb-2 text-lg font-semibold text-red-600 dark:text-red-400">
+          <div className="farm-card p-6 text-center">
+            <p className="mb-2 text-lg font-semibold" style={{ color: '#b91c1c' }}>
               相手が見つかりません
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm" style={{ color: '#6b4c0a' }}>
               URLが正しくないか、相手が削除された可能性があります。
             </p>
             <a
               href="/farm"
-              className="mt-4 inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+              className="farm-btn mt-4 inline-flex h-11 items-center justify-center px-6 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
             >
               農園に戻る
             </a>
@@ -38,36 +48,30 @@ export default async function RequestPage({ params }: Props) {
     )
   }
 
-  // この相手との確定済みミーティング回数を取得
-  const { data: confirmedRows } = await getSupabase()
-    .from('meetings')
-    .select('id')
-    .eq('farm_contact_id', farm_contact_id)
-    .not('confirmed_index', 'is', null)
-
   const confirmedCount = confirmedRows?.length ?? 0
 
   return (
-    <div className="min-h-screen bg-emerald-50 dark:bg-gray-950">
+    <div className="min-h-screen" style={{ background: '#f5ede0' }}>
       {/* ヘッダー */}
-      <header className="flex items-center gap-3 px-4 py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm">
+      <header className="farm-header flex items-center gap-3 px-4 py-3">
         <a
           href="/farm"
-          className="h-11 w-11 flex items-center justify-center rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+          className="h-11 w-11 flex items-center justify-center rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+          style={{ color: '#f5e6a3' }}
           aria-label="農園に戻る"
         >
           ←
         </a>
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-bold text-emerald-800 dark:text-emerald-300 truncate">
+          <h1 className="text-base font-bold truncate" style={{ color: '#f5e6a3' }}>
             {data.contact_name}さんへリクエスト
           </h1>
           {confirmedCount > 0 ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs" style={{ color: '#c8e6a3' }}>
               これまで{confirmedCount}回ミーティングが確定しています
             </p>
           ) : (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs" style={{ color: '#c8e6a3' }}>
               はじめてのリクエストです
             </p>
           )}

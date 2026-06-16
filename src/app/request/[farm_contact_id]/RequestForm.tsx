@@ -161,19 +161,19 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
     // 「今送る」を選んだ後: コピー完了フィードバック → 農園に戻る誘導
     if (sendChoice === 'now') {
       return (
-        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
+        <div className="farm-card p-6 space-y-4">
           <div className="text-center">
             <div className="mb-2 text-5xl" role="img" aria-label="完了">🎉</div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-lg font-bold" style={{ color: '#2c1a0e' }}>
               URLをコピーしました！
             </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-sm" style={{ color: '#8b6914' }}>
               {contactName}さんにURLを送りましょう
             </p>
           </div>
 
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
-            <p className="break-all text-sm font-mono text-gray-700 dark:text-gray-300">
+          <div className="rounded-xl px-4 py-3" style={{ border: '1.5px solid #d4a853', background: '#fef7e4' }}>
+            <p className="break-all text-sm font-mono" style={{ color: '#2c1a0e' }}>
               {submittedInfo.url}
             </p>
           </div>
@@ -181,14 +181,15 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           <button
             type="button"
             onClick={handleCopy}
-            className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-colors"
+            className="farm-btn flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400"
           >
             {isCopied ? 'コピーしました！' : 'もう一度コピー'}
           </button>
 
           <a
             href="/farm"
-            className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-base font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+            className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+            style={{ border: '2px solid #c8953a', color: '#4a8c5c', background: '#fef7e4' }}
           >
             農園に戻る
           </a>
@@ -199,19 +200,19 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
     // 「後で」を選んだ後: URLコピー + 農園へ戻る
     if (sendChoice === 'later') {
       return (
-        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
+        <div className="farm-card p-6 space-y-4">
           <div className="text-center">
             <div className="mb-2 text-4xl" role="img" aria-label="保存">📋</div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-lg font-bold" style={{ color: '#2c1a0e' }}>
               下書きを保存しました
             </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-sm" style={{ color: '#8b6914' }}>
               {contactName}さんにこのURLを送ってください
             </p>
           </div>
 
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
-            <p className="break-all text-sm font-mono text-gray-700 dark:text-gray-300">
+          <div className="rounded-xl px-4 py-3" style={{ border: '1.5px solid #d4a853', background: '#fef7e4' }}>
+            <p className="break-all text-sm font-mono" style={{ color: '#2c1a0e' }}>
               {submittedInfo.url}
             </p>
           </div>
@@ -219,14 +220,15 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           <button
             type="button"
             onClick={handleCopy}
-            className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-colors"
+            className="farm-btn flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400"
           >
             {isCopied ? 'コピーしました！' : 'URLをコピー'}
           </button>
 
           <a
             href="/farm"
-            className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-base font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+            className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+            style={{ border: '2px solid #c8953a', color: '#4a8c5c', background: '#fef7e4' }}
           >
             農園に戻る
           </a>
@@ -236,10 +238,10 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
 
     // 未選択状態: 「今送りますか？後で送りますか？」の確認画面
     return (
-      <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 p-6 shadow-sm space-y-4">
+      <div className="farm-card p-6 space-y-4">
         <div className="text-center">
           <div className="mb-2 text-5xl" role="img" aria-label="完了">✅</div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          <h2 className="text-lg font-bold" style={{ color: '#2c1a0e' }}>
             リクエストを作成しました！
           </h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -250,13 +252,13 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
         </div>
 
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
-          <p className="mb-1 text-xs font-semibold text-gray-500 dark:text-gray-400">送付URL</p>
+          <p className="mb-1 text-xs font-semibold" style={{ color: '#8b6914' }}>送付URL</p>
           <p className="break-all text-sm font-mono text-gray-700 dark:text-gray-300">
             {submittedInfo.url}
           </p>
         </div>
 
-        <p className="text-sm font-semibold text-center text-gray-700 dark:text-gray-300">
+        <p className="text-sm font-semibold text-center" style={{ color: '#3d2b0e' }}>
           今すぐ{contactName}さんに送りますか？
         </p>
 
@@ -264,7 +266,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           <button
             type="button"
             onClick={handleSendNow}
-            className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-colors"
+            className="farm-btn flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400"
           >
             今送る（URLをコピー）
           </button>
@@ -272,7 +274,8 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           <button
             type="button"
             onClick={handleSendLater}
-            className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-emerald-300 dark:border-emerald-700 text-base font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+            className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+            style={{ border: '2px solid #c8953a', color: '#4a8c5c', background: '#fef7e4' }}
           >
             後で送る
           </button>
@@ -306,11 +309,12 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           value={studentName}
           onChange={(e) => setStudentName(e.target.value)}
           placeholder="例：山田 太郎（あなた自身の名前）"
-          className="w-full h-12 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
+          className="w-full h-12 rounded-xl px-4 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
           autoComplete="name"
         />
         {errors.studentName && (
-          <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
+          <p role="alert" className="mt-1 text-sm" style={{ color: '#b91c1c' }}>
             {errors.studentName}
           </p>
         )}
@@ -320,7 +324,8 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
       <div className="mb-5">
         <label
           htmlFor="purpose"
-          className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+          className="block text-sm font-semibold mb-1"
+          style={{ color: '#3d2b0e' }}
         >
           相談内容
         </label>
@@ -330,10 +335,11 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           onChange={(e) => setPurpose(e.target.value)}
           placeholder="例：卒業研究の進め方について相談したいです"
           rows={3}
-          className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none"
+          className="w-full rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
+          style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
         />
         {errors.purpose && (
-          <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
+          <p role="alert" className="mt-1 text-sm" style={{ color: '#b91c1c' }}>
             {errors.purpose}
           </p>
         )}
@@ -341,7 +347,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
 
       {/* 候補日時 */}
       <div className="mb-5">
-        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+        <p className="text-sm font-semibold mb-2" style={{ color: '#3d2b0e' }}>
           候補日時（最大{MAX_CANDIDATES}件）
         </p>
 
@@ -349,9 +355,10 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           {candidates.map((candidate, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3"
+              className="flex items-center gap-2 rounded-xl p-3"
+              style={{ border: '1.5px solid #d4a853', background: '#fef7e4' }}
             >
-              <span className="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400 w-5 text-center">
+              <span className="shrink-0 text-xs font-medium w-5 text-center" style={{ color: '#8b6914' }}>
                 {index + 1}
               </span>
               <div className="flex flex-1 flex-col sm:flex-row gap-2">
@@ -361,13 +368,15 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
                   min={MIN_DATE}
                   onChange={(e) => updateCandidate(index, 'date', e.target.value)}
                   aria-label={`候補日${index + 1}の日付`}
-                  className="flex-1 h-11 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent"
+                  className="flex-1 h-11 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
                 />
                 <select
                   value={candidate.time}
                   onChange={(e) => updateCandidate(index, 'time', e.target.value)}
                   aria-label={`候補日${index + 1}の時刻`}
-                  className="w-full sm:w-36 h-11 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent"
+                  className="w-full sm:w-36 h-11 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
                 >
                   <option value="">時間を選択</option>
                   {TIME_OPTIONS.map((t) => (
@@ -382,7 +391,8 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
                   type="button"
                   onClick={() => removeCandidate(index)}
                   aria-label={`候補日${index + 1}を削除`}
-                  className="shrink-0 h-11 w-11 flex items-center justify-center rounded-lg text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-400 transition-colors"
+                  className="shrink-0 h-11 w-11 flex items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 transition-colors"
+                  style={{ color: '#b91c1c' }}
                 >
                   ×
                 </button>
@@ -392,7 +402,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
         </div>
 
         {errors.candidates && (
-          <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
+          <p role="alert" className="mt-2 text-sm" style={{ color: '#b91c1c' }}>
             {errors.candidates}
           </p>
         )}
@@ -401,7 +411,8 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           <button
             type="button"
             onClick={addCandidate}
-            className="mt-3 flex h-11 w-full items-center justify-center gap-1 rounded-xl border-2 border-dashed border-emerald-300 dark:border-emerald-700 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+            className="mt-3 flex h-11 w-full items-center justify-center gap-1 rounded-xl border-2 border-dashed text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+            style={{ borderColor: '#c8953a', color: '#4a8c5c' }}
           >
             <span aria-hidden="true">＋</span> 候補日を追加
           </button>
@@ -410,7 +421,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
 
       {/* 送信エラー */}
       {errors.submit && (
-        <p role="alert" className="mb-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="mb-4 rounded-lg px-4 py-3 text-sm" style={{ border: '1px solid #fca5a5', background: '#fef2f2', color: '#b91c1c' }}>
           {errors.submit}
         </p>
       )}
