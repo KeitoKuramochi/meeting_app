@@ -135,6 +135,19 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
   const [localManualConfirmed, setLocalManualConfirmed] = useState(false)
   const [locallyConfirmedIds, setLocallyConfirmedIds] = useState<Set<string>>(new Set())
 
+  // 成長検知
+  const prevConfirmedRef = useRef(liveConfirmedCount)
+  const [showLevelUp, setShowLevelUp] = useState(false)
+  useEffect(() => {
+    if (liveConfirmedCount > prevConfirmedRef.current) {
+      setShowLevelUp(true)
+      const t = setTimeout(() => setShowLevelUp(false), 2000)
+      prevConfirmedRef.current = liveConfirmedCount
+      return () => clearTimeout(t)
+    }
+    prevConfirmedRef.current = liveConfirmedCount
+  }, [liveConfirmedCount])
+
   useEffect(() => {
     setDraft(readDraft(contact.id))
   }, [contact.id])
@@ -389,26 +402,27 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
             </div>
 
             {/* スクロールエリア */}
-            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3">
+            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3" style={{ background: '#fef7e4' }}>
               {/* 未送信 draft があれば最上部に表示 */}
               {draft && (
-                <div className="rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20 p-3 space-y-2">
+                <div className="rounded-xl p-3 space-y-2" style={{ background: '#fff3e0', border: '1.5px solid #f59e0b' }}>
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm" role="img" aria-label="未送信">📋</span>
-                    <span className="text-xs font-semibold text-orange-700 dark:text-orange-300">未送信のURLがあります</span>
+                    <span className="text-xs font-semibold" style={{ color: '#92400e' }}>未送信のURLがあります</span>
                   </div>
-                  <p className="break-all text-xs font-mono text-gray-600 dark:text-gray-400">{draft.url}</p>
+                  <p className="break-all text-xs font-mono" style={{ color: '#6b4c0a' }}>{draft.url}</p>
                   <button
                     type="button"
                     onClick={handleDraftCopy}
-                    className="flex h-9 w-full items-center justify-center rounded-lg bg-orange-500 dark:bg-orange-600 text-xs font-semibold text-white hover:bg-orange-600 focus:outline-none transition-colors"
+                    className="farm-btn-gold flex h-9 w-full items-center justify-center text-xs focus:outline-none transition-colors"
                   >
                     {isDraftCopied ? 'コピーしました！' : 'URLをコピー'}
                   </button>
                   <button
                     type="button"
                     onClick={handleDraftSent}
-                    className="flex h-9 w-full items-center justify-center rounded-lg border border-orange-300 dark:border-orange-700 text-xs font-semibold text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/40 focus:outline-none transition-colors"
+                    className="flex h-9 w-full items-center justify-center rounded-lg text-xs font-semibold focus:outline-none transition-colors"
+                    style={{ border: '1.5px solid #f59e0b', color: '#92400e', background: '#fffbeb' }}
                   >
                     送信済みにする（未送信を消す）
                   </button>
@@ -417,11 +431,11 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
 
               {/* ミーティング履歴 */}
               {isLoadingHistory ? (
-                <div className="py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                <div className="py-8 text-center text-sm" style={{ color: '#8b6914' }}>
                   読み込み中...
                 </div>
               ) : historyItems.length === 0 ? (
-                <div className="py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                <div className="py-8 text-center text-sm" style={{ color: '#8b6914' }}>
                   まだリクエストがありません
                 </div>
               ) : (
@@ -437,28 +451,29 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
                   return (
                     <div
                       key={item.id}
-                      className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 space-y-2"
+                      className="rounded-xl p-3 space-y-2"
+                      style={{ background: '#fffdf7', border: '1.5px solid #d4a853' }}
                     >
                       {/* 上部: 日付 + ステータスバッジ */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                          <span className="text-xs" style={{ color: '#8b6914' }}>
                             {formatDate(item.created_at)}
                           </span>
-                          <p className="mt-0.5 text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+                          <p className="mt-0.5 text-sm font-semibold truncate" style={{ color: '#2c1a0e' }}>
                             {item.purpose}
                           </p>
                         </div>
                         {isConfirmed ? (
-                          <span className="shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                          <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: '#d1fae5', color: '#065f46' }}>
                             ✅ 確定
                           </span>
                         ) : hasReply ? (
-                          <span className="shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                          <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: '#dbeafe', color: '#1e40af' }}>
                             📬 返信あり
                           </span>
                         ) : (
-                          <span className="shrink-0 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                          <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: '#fef3c7', color: '#92400e' }}>
                             ⏳ 確定待ち
                           </span>
                         )}
@@ -466,7 +481,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
 
                       {/* 候補日 */}
                       {item.candidates && item.candidates.length > 0 && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <div className="text-xs" style={{ color: '#6b4c0a' }}>
                           候補: {item.candidates.map((c, i) => (
                             <span key={i}>{i > 0 ? '・' : ''}{c.date} {c.time}</span>
                           ))}
@@ -475,13 +490,13 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
 
                       {/* 確定済みの場合: 確定日時 */}
                       {isConfirmed && confirmedCandidate && (
-                        <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                        <div className="text-xs font-medium" style={{ color: '#065f46' }}>
                           確定: {confirmedCandidate.date} {confirmedCandidate.time}
                           {item.duration_minutes != null && ` • ${formatDuration(item.duration_minutes)}`}
                         </div>
                       )}
                       {isConfirmed && !confirmedCandidate && (
-                        <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                        <div className="text-xs font-medium" style={{ color: '#065f46' }}>
                           確定済み
                           {item.duration_minutes != null && ` • ${formatDuration(item.duration_minutes)}`}
                         </div>
@@ -491,16 +506,16 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
                       {hasReply && (
                         <div className="space-y-2">
                           {item.alternative_candidates && item.alternative_candidates.length > 0 && (
-                            <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 px-2.5 py-2 text-xs space-y-0.5">
-                              <p className="font-semibold text-blue-700 dark:text-blue-300">別日提案:</p>
+                            <div className="rounded-lg px-2.5 py-2 text-xs space-y-0.5" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                              <p className="font-semibold" style={{ color: '#1e40af' }}>別日提案:</p>
                               {item.alternative_candidates.map((c, i) => (
-                                <p key={i} className="text-blue-600 dark:text-blue-400">
+                                <p key={i} style={{ color: '#1d4ed8' }}>
                                   {c.date} {c.time}
                                   {item.duration_minutes != null && ` • ${formatDuration(item.duration_minutes)}`}
                                 </p>
                               ))}
                               {item.note && (
-                                <p className="text-blue-600 dark:text-blue-400">備考: {item.note}</p>
+                                <p style={{ color: '#1d4ed8' }}>備考: {item.note}</p>
                               )}
                             </div>
                           )}
@@ -508,7 +523,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
                             type="button"
                             onClick={() => handleManualConfirmItem(item.id)}
                             disabled={isConfirming}
-                            className="flex h-9 w-full items-center justify-center rounded-lg bg-emerald-600 dark:bg-emerald-700 text-xs font-semibold text-white hover:bg-emerald-700 focus:outline-none transition-colors disabled:opacity-60"
+                            className="farm-btn flex h-9 w-full items-center justify-center text-xs focus:outline-none transition-colors disabled:opacity-60"
                           >
                             {isConfirming ? '確定中...' : '手動で確定する'}
                           </button>
@@ -517,13 +532,14 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
 
                       {/* URL コピー */}
                       <div className="flex items-center gap-2 pt-1">
-                        <span className="flex-1 truncate text-xs font-mono text-gray-400 dark:text-gray-500">
+                        <span className="flex-1 truncate text-xs font-mono" style={{ color: '#8b6914' }}>
                           {meetingUrl}
                         </span>
                         <button
                           type="button"
                           onClick={() => copyMeetingUrl(item.id, meetingUrl)}
-                          className="shrink-0 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none transition-colors"
+                          className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium focus:outline-none transition-colors"
+                          style={{ border: '1.5px solid #d4a853', color: '#6b4c0a', background: '#fffdf7' }}
                         >
                           {copiedMeetingId === item.id ? '✓' : 'コピー'}
                         </button>
@@ -590,7 +606,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
             className="absolute inset-0 w-full h-full object-contain"
             draggable={false}
           />
-          <span className="relative z-10 font-bold text-gray-700 leading-none text-center" style={{ fontSize: 11 }}>
+          <span className="relative z-10 font-bold leading-none text-center" style={{ fontSize: 11, color: '#3d2b0e' }}>
             {hasDraft ? (
               <span className="text-orange-600">未送信</span>
             ) : showReplied ? (
@@ -603,10 +619,29 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
           </span>
         </div>
 
+        {/* 成長バッジ */}
+        {showLevelUp && (
+          <div
+            className="absolute left-1/2 z-20 pointer-events-none animate-badge-float"
+            style={{ bottom: '100%' }}
+          >
+            <span
+              className="text-xs font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap"
+              style={{ background: '#2a5c1e', color: '#f5e6a3' }}
+            >
+              🌱 成長した！
+            </span>
+          </div>
+        )}
+
         {/* キャラ本体 + オーバーレイ */}
         <div
-          className="relative"
-          style={{ width: 80 * scale, height: 80 * scale }}
+          className={showLevelUp ? 'relative animate-level-up' : 'relative'}
+          style={{
+            width: 80 * scale,
+            height: 80 * scale,
+            transition: 'width 0.55s cubic-bezier(0.34,1.56,0.64,1), height 0.55s cubic-bezier(0.34,1.56,0.64,1)',
+          }}
         >
           <img
             ref={imgRef}
@@ -677,7 +712,9 @@ export default function FarmCharacters({ contacts }: Props) {
     () => initCounts().confirmed
   )
 
-  // 20秒間隔でポーリングして replied / confirmed の状況を取得する
+  // ポーリング用 fetchCounts を ref に保持（visibilitychange から呼べるようにする）
+  const fetchCountsRef = useRef<() => Promise<void>>(async () => { /* init */ })
+
   useEffect(() => {
     if (contacts.length === 0) return
 
@@ -712,11 +749,21 @@ export default function FarmCharacters({ contacts }: Props) {
       }
     }
 
+    fetchCountsRef.current = fetchCounts
     fetchCounts()
-    const intervalId = setInterval(fetchCounts, 20000)
+    const intervalId = setInterval(fetchCounts, 10000)  // 10秒ごと
 
     return () => clearInterval(intervalId)
   }, [contacts])
+
+  // タブに戻ったとき即時更新（成長を確実に反映する）
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchCountsRef.current()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
 
   // 手動確定後に liveRepliedCounts を 0 にリセットする
   const handleManualConfirmed = useCallback((contactId: string) => {
@@ -727,8 +774,8 @@ export default function FarmCharacters({ contacts }: Props) {
   if (contacts.length === 0) {
     return (
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="rounded-2xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-6 py-4 text-center shadow-md">
-          <p className="text-base font-medium text-gray-700 dark:text-gray-300">
+        <div className="farm-card rounded-2xl px-6 py-4 text-center shadow-md">
+          <p className="text-base font-medium" style={{ color: '#3d2b0e' }}>
             まだ誰もいません。相手を追加しましょう！
           </p>
         </div>

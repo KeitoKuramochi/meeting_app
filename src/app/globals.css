@@ -73,3 +73,26 @@ body {
   border-radius: 20px;
   box-shadow: 0 20px 60px rgba(107,68,35,0.35);
 }
+
+/* Level-up growth animation */
+@keyframes level-up-pop {
+  0%   { transform: scale(1) translateY(0); }
+  25%  { transform: scale(1.45) translateY(-10px); }
+  55%  { transform: scale(0.92) translateY(0); }
+  75%  { transform: scale(1.08) translateY(-3px); }
+  100% { transform: scale(1) translateY(0); }
+}
+.animate-level-up {
+  animation: level-up-pop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Floating badge for level-up */
+@keyframes badge-float {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(0); }
+  20%  { opacity: 1; transform: translateX(-50%) translateY(-12px); }
+  80%  { opacity: 1; transform: translateX(-50%) translateY(-18px); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-26px); }
+}
+.animate-badge-float {
+  animation: badge-float 1.8s ease-out forwards;
+}
