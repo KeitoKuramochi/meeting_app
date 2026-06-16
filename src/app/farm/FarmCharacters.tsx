@@ -714,12 +714,12 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
               className="absolute" style={{ top: -8, left: -8 }} draggable={false}
             />
           )}
-          {showReplied && (
+          {(showReplied || hasDraft) && (
             <span
               className="absolute pointer-events-none font-extrabold"
-              style={{ top: -8, right: -6, fontSize: 14, color: '#dc2626', textShadow: '0 0 4px white, 0 0 4px white', lineHeight: 1 }}
+              style={{ top: -14, right: -8, fontSize: 10, color: '#dc2626', textShadow: '0 0 3px white, 0 0 3px white, 0 0 3px white', lineHeight: 1, whiteSpace: 'nowrap' }}
             >
-              ！
+              {hasDraft ? '未送信' : '返信あり'}
             </span>
           )}
         </div>
