@@ -604,7 +604,14 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
         </div>
 
         {/* キャラ本体 + オーバーレイ */}
-        <div className="relative" style={{ width: 80 * scale, height: 80 * scale }}>
+        <div
+          className="relative"
+          style={{
+            width: 80 * scale,
+            height: 80 * scale,
+            background: 'radial-gradient(ellipse at 50% 60%, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0) 72%)',
+          }}
+        >
           <img
             ref={imgRef}
             src={`/images/processed_${contact.character_number}.png`}
@@ -612,7 +619,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
             width={80}
             height={80}
             className="pixel-char"
-            style={{ width: '100%', height: '100%' }}
+            style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.28))' }}
             draggable={false}
           />
 

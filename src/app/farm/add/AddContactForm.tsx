@@ -113,8 +113,12 @@ export default function AddContactForm({ farmId }: Props) {
             style={{ background: 'rgba(42,92,30,0.08)', border: '2px solid #4a8c5c' }}
           >
             <div
-              className="shrink-0 rounded-xl overflow-hidden"
-              style={{ width: 96, height: 96, background: 'rgba(0,0,0,0.04)', border: '2px solid #7cb87c' }}
+              className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
+              style={{
+                width: 96, height: 96,
+                background: 'radial-gradient(ellipse at 50% 60%, rgba(255,255,255,0.85) 0%, rgba(240,230,200,0.5) 100%)',
+                border: '2px solid #7cb87c',
+              }}
             >
               <img
                 src={'/images/processed_' + selectedCharacter + '.png'}
@@ -122,6 +126,7 @@ export default function AddContactForm({ farmId }: Props) {
                 width={96}
                 height={96}
                 className="w-full h-full object-contain pixel-char"
+                style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.25))' }}
                 draggable={false}
               />
             </div>
@@ -160,7 +165,9 @@ export default function AddContactForm({ farmId }: Props) {
                 }}
                 className="flex flex-col items-center justify-center rounded-lg p-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400 min-h-[52px]"
                 style={{
-                  background: isSelected ? 'rgba(42,92,30,0.15)' : 'transparent',
+                  background: isSelected
+                    ? 'radial-gradient(ellipse at center, rgba(200,240,200,0.9) 0%, rgba(42,92,30,0.15) 100%)'
+                    : 'radial-gradient(ellipse at center, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0) 100%)',
                   border: isSelected ? '2px solid #4a8c5c' : '2px solid transparent',
                   transform: isSelected ? 'scale(1.08)' : 'scale(1)',
                 }}
