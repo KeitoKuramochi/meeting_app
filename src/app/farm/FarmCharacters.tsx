@@ -636,7 +636,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
         }}
       >
         {/* 吹き出し */}
-        <div className="relative mb-1 flex items-center justify-center" style={{ width: 56, height: 44 }}>
+        <div className={showReplied ? 'relative mb-1 flex items-center justify-center animate-bounce' : 'relative mb-1 flex items-center justify-center'} style={{ width: 56, height: 44 }}>
           <img
             src={showReplied && !hasDraft ? '/images/processed_a6.png' : '/images/processed_a1.png'}
             alt=""
@@ -713,6 +713,12 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
               width={20} height={20}
               className="absolute" style={{ top: -8, left: -8 }} draggable={false}
             />
+          )}
+          {showReplied && (
+            <span className="absolute pointer-events-none flex" style={{ top: -6, right: -6 }}>
+              <span className="animate-ping absolute inline-flex h-3.5 w-3.5 rounded-full opacity-75" style={{ background: '#ef4444' }} />
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5" style={{ background: '#dc2626', boxShadow: '0 0 0 2px white' }} />
+            </span>
           )}
         </div>
 
