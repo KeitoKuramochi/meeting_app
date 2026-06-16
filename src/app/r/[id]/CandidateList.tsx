@@ -105,7 +105,7 @@ function DurationPicker({
               value={customMinutes}
               onChange={(e) => onCustomChange(e.target.value)}
               placeholder="例：45"
-              className="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
             <span className="text-sm text-gray-600">分</span>
           </div>
@@ -114,6 +114,10 @@ function DurationPicker({
       )}
     </div>
   )
+}
+
+function createEmptyAltCandidate(): Candidate {
+  return { date: '', time: '' }
 }
 
 export default function CandidateList({
@@ -143,14 +147,35 @@ export default function CandidateList({
 
   // --- 別日提案フロー状態 ---
   const [showAlternativeForm, setShowAlternativeForm] = useState<boolean>(false)
-  const [altDate, setAltDate] = useState<string>('')
-  const [altTime, setAltTime] = useState<string>('')
+  const [altCandidates, setAltCandidates] = useState<Candidate[]>([createEmptyAltCandidate()])
   const [altDurationPreset, setAltDurationPreset] = useState<DurationPreset | null>(null)
   const [altDurationCustom, setAltDurationCustom] = useState<string>('')
   const [altNote, setAltNote] = useState<string>('')
   const [isAltSubmitting, setIsAltSubmitting] = useState<boolean>(false)
   const [altErrorMessage, setAltErrorMessage] = useState<string>('')
   const [altSubmitted, setAltSubmitted] = useState<boolean>(false)
+
+  function addAltCandidate() {
+    if (altCandidates.length < 5) {
+      setAltCandidates((prev) => [...prev, createEmptyAltCandidate()])
+    }
+  }
+
+  function removeAltCandidate(index: number) {
+    if (altCandidates.length > 1) {
+      setAltCandidates((prev) => prev.filter((_, i) => i !== index))
+    }
+  }
+
+  function updateAltDate(index: number, date: string) {
+    setAltCandidates((prev) => prev.map((c, i) => (i === index ? { ...c, date } : c)))
+    setAltErrorMessage('')
+  }
+
+  function updateAltTime(index: number, time: string) {
+    setAltCandidates((prev) => prev.map((c, i) => (i === index ? { ...c, time } : c)))
+    setAltErrorMessage('')
+  }
 
   // 確定済み表示
   if (isConfirmed && selectedIndex !== null && candidates[selectedIndex]) {
@@ -215,7 +240,6 @@ export default function CandidateList({
       const now = new Date().toISOString()
       const trimmedNote = confirmNote.trim() || null
 
-      // まず Phase 3 カラムを含むフル更新を試みる
       const { error } = await getSupabase()
         .from('meetings')
         .update({
@@ -227,7 +251,6 @@ export default function CandidateList({
         .eq('id', meetingId)
 
       if (error) {
-        // Phase 3 カラムが DB に存在しない場合のフォールバック
         const { error: fallbackError } = await getSupabase()
           .from('meetings')
           .update({
@@ -254,12 +277,9 @@ export default function CandidateList({
   }
 
   async function handleAltSubmit() {
-    if (!altDate) {
-      setAltErrorMessage('日付を入力してください')
-      return
-    }
-    if (!altTime) {
-      setAltErrorMessage('時間を選択してください')
+    const filledAlt = altCandidates.filter((c) => c.date.trim() !== '' && c.time.trim() !== '')
+    if (filledAlt.length === 0) {
+      setAltErrorMessage('別日の候補を少なくとも1件入力してください')
       return
     }
     if (altDurationPreset === null) {
@@ -283,7 +303,7 @@ export default function CandidateList({
       const { error } = await getSupabase()
         .from('meetings')
         .update({
-          alternative_candidates: [{ date: altDate, time: altTime }],
+          alternative_candidates: filledAlt,
           replied_at: new Date().toISOString(),
           note: altNote.trim() || null,
           duration_minutes: altDurationMinutes,
@@ -291,7 +311,6 @@ export default function CandidateList({
         .eq('id', meetingId)
 
       if (error) {
-        // Phase 3 カラムが DB に存在しない場合のフォールバック（Phase 2 相当）
         const { error: fallbackError } = await getSupabase()
           .from('meetings')
           .update({
@@ -373,7 +392,7 @@ export default function CandidateList({
         </label>
         <textarea
           id="confirm-note"
-          rows={5}
+          rows={3}
           value={confirmNote}
           onChange={(e) => setConfirmNote(e.target.value)}
           placeholder="ご質問や確認事項があればご記入ください"
@@ -422,48 +441,59 @@ export default function CandidateList({
                 別の日を提案する
               </h3>
 
-              {/* 日付 */}
-              <div className="mb-4">
-                <label
-                  htmlFor="alt-date"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  日付 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="alt-date"
-                  type="date"
-                  min={getTodayString()}
-                  value={altDate}
-                  onChange={(e) => {
-                    setAltDate(e.target.value)
-                    setAltErrorMessage('')
-                  }}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
+              {/* 別日候補（複数対応） */}
+              <div className="mb-4 space-y-3">
+                {altCandidates.map((altC, altIdx) => (
+                  <div
+                    key={altIdx}
+                    className="rounded-lg border border-gray-200 p-3 space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-600">候補 {altIdx + 1}</span>
+                      {altCandidates.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeAltCandidate(altIdx)}
+                          className="text-xs text-red-500 hover:text-red-700 focus:outline-none"
+                        >
+                          削除
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 日付 */}
+                    <input
+                      type="date"
+                      min={getTodayString()}
+                      value={altC.date}
+                      onChange={(e) => updateAltDate(altIdx, e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+
+                    {/* 時間 */}
+                    <select
+                      value={altC.time}
+                      onChange={(e) => updateAltTime(altIdx, e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                      <option value="">時間を選択</option>
+                      {TIME_OPTIONS.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
               </div>
 
-              {/* 時間 */}
-              <div className="mb-4">
-                <p className="mb-2 text-sm font-medium text-gray-700">
-                  時間 <span className="text-red-500">*</span>
-                </p>
-                <select
-                  value={altTime}
-                  onChange={(e) => {
-                    setAltTime(e.target.value)
-                    setAltErrorMessage('')
-                  }}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              {altCandidates.length < 5 && (
+                <button
+                  type="button"
+                  onClick={addAltCandidate}
+                  className="mb-4 flex h-9 w-full items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 focus:outline-none"
                 >
-                  <option value="">時間を選択</option>
-                  {TIME_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  ＋ 候補日を追加
+                </button>
+              )}
 
               {/* 所要時間 */}
               <div className="mb-4">
@@ -491,7 +521,7 @@ export default function CandidateList({
                 </label>
                 <textarea
                   id="alt-note"
-                  rows={5}
+                  rows={3}
                   value={altNote}
                   onChange={(e) => setAltNote(e.target.value)}
                   placeholder="提案理由などがあればご記入ください"

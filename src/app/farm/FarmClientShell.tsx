@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import FarmCharacters from './FarmCharacters'
@@ -13,20 +13,29 @@ type Props = {
 
 type ContactItemProps = {
   contact: FarmContactWithCount
-  onClose: () => void
+  hasDraft: boolean
+  onOpen: (contactId: string) => void
 }
 
-function ContactListItem({ contact, onClose }: ContactItemProps) {
+function ContactListItem({ contact, hasDraft, onOpen }: ContactItemProps) {
   const hasReply = contact.repliedCount > 0
   const hasPending = contact.pendingCount > 0
-  const borderColor = hasReply ? '#3b82f6' : hasPending ? '#d97706' : '#c8953a'
+  const borderColor = hasReply ? '#3b82f6' : hasDraft ? '#d97706' : hasPending ? '#d97706' : '#c8953a'
+  const statusColor = hasReply ? '#1d4ed8' : hasDraft ? '#9a3412' : hasPending ? '#92400e' : '#6b4c0a'
+  const statusText = hasReply
+    ? '📬 返信が届いています'
+    : hasDraft
+    ? '📋 未送信（URLをまだ送っていません）'
+    : hasPending
+    ? '⏳ 確定待ち'
+    : '✅ ' + contact.confirmedCount + '回確定'
 
   return (
-    <Link
-      href={'/request/' + contact.id}
-      onClick={onClose}
-      className="flex items-center gap-3 p-3 rounded-xl transition-colors active:opacity-70"
-      style={{ background: '#fef7e4', border: '1.5px solid ' + borderColor, display: 'flex' }}
+    <button
+      type="button"
+      onClick={() => onOpen(contact.id)}
+      className="flex items-center gap-3 p-3 rounded-xl transition-colors active:opacity-70 w-full text-left"
+      style={{ background: '#fef7e4', border: '1.5px solid ' + borderColor }}
     >
       <div className="shrink-0 rounded-lg overflow-hidden" style={{ width: 48, height: 48, background: 'rgba(0,0,0,0.06)' }}>
         <img
@@ -40,20 +49,36 @@ function ContactListItem({ contact, onClose }: ContactItemProps) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-sm truncate" style={{ color: '#2c1a0e' }}>{contact.contact_name}</p>
-        <p className="text-xs mt-0.5" style={{ color: hasReply ? '#1d4ed8' : hasPending ? '#92400e' : '#6b4c0a' }}>
-          {hasReply ? '📬 返信が届いています' : hasPending ? '⏳ 確定待ち' : '✅ ' + contact.confirmedCount + '回確定'}
+        <p className="text-xs mt-0.5" style={{ color: statusColor }}>
+          {statusText}
         </p>
       </div>
       <span className="shrink-0 text-sm" style={{ color: '#8b6914' }}>›</span>
-    </Link>
+    </button>
   )
 }
 
 export default function FarmClientShell({ contacts }: Props) {
   const [showList, setShowList] = useState(false)
+  const [openModalContactId, setOpenModalContactId] = useState<string | null>(null)
+  const [draftContactIds, setDraftContactIds] = useState<Set<string>>(new Set())
+
+  // localStorage のドラフト状態を読み込む
+  useEffect(() => {
+    const ids = new Set<string>()
+    for (const c of contacts) {
+      if (localStorage.getItem(`phase3_draft_${c.id}`)) ids.add(c.id)
+    }
+    setDraftContactIds(ids)
+  }, [contacts])
 
   const totalConfirmed = contacts.reduce((sum, c) => sum + c.confirmedCount, 0)
   const alertCount = contacts.filter(c => c.repliedCount > 0).length
+
+  function handleOpenModal(contactId: string) {
+    setOpenModalContactId(contactId)
+    setShowList(false)
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f5ede0' }}>
@@ -126,7 +151,16 @@ export default function FarmClientShell({ contacts }: Props) {
           />
 
           <div className="absolute inset-0">
-            <FarmCharacters contacts={contacts} />
+            <FarmCharacters
+              contacts={contacts}
+              openModalContactId={openModalContactId}
+              onModalOpened={() => setOpenModalContactId(null)}
+              onDraftCleared={(id) => setDraftContactIds(prev => {
+                const next = new Set(prev)
+                next.delete(id)
+                return next
+              })}
+            />
           </div>
 
           {contacts.length === 0 && (
@@ -204,7 +238,12 @@ export default function FarmClientShell({ contacts }: Props) {
                 </div>
               ) : (
                 contacts.map(c => (
-                  <ContactListItem key={c.id} contact={c} onClose={() => setShowList(false)} />
+                  <ContactListItem
+                    key={c.id}
+                    contact={c}
+                    hasDraft={draftContactIds.has(c.id)}
+                    onOpen={handleOpenModal}
+                  />
                 ))
               )}
             </div>

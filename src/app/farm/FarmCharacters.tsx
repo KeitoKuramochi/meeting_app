@@ -111,9 +111,12 @@ type CharacterProps = {
   index: number
   isCrown: boolean
   onManualConfirmed: (contactId: string) => void
+  onDraftCleared?: (contactId: string) => void
+  requestedOpen?: boolean
+  onModalOpened?: () => void
 }
 
-function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingCount, index, isCrown, onManualConfirmed }: CharacterProps) {
+function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingCount, index, isCrown, onManualConfirmed, onDraftCleared, requestedOpen, onModalOpened }: CharacterProps) {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
@@ -160,6 +163,9 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
   useEffect(() => {
     setDraft(readDraft(contact.id))
   }, [contact.id])
+
+  // requestedOpen が true になったらモーダルを開く（リストからの起動）
+  const openHistoryModalRef = useRef<(() => void) | null>(null)
 
   const stateRef = useRef<WalkState>({
     x: 35 + seedRand(index, 2) * 30,
@@ -315,7 +321,20 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
       if (error) {
         setHistoryError(true)
       } else {
-        setHistoryItems((data as MeetingHistoryItem[]) ?? [])
+        const items = (data as MeetingHistoryItem[]) ?? []
+        setHistoryItems(items)
+        // 確定済みのミーティングにドラフトが対応していれば自動クリア
+        const currentDraft = readDraft(contact.id)
+        if (currentDraft) {
+          const isConfirmedMeeting = items.some(
+            m => m.id === currentDraft.meetingId && (m.confirmed_index !== null || m.manually_confirmed === true)
+          )
+          if (isConfirmedMeeting) {
+            localStorage.removeItem(`phase3_draft_${contact.id}`)
+            setDraft(null)
+            onDraftCleared?.(contact.id)
+          }
+        }
       }
     } catch {
       setHistoryError(true)
@@ -330,7 +349,6 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
   }, [fetchHistory])
 
   const openHistoryModal = useCallback(() => {
-    // タップ後5秒間キャラをゆっくり動かしてタップしやすくする
     slowdownUntilRef.current = Date.now() + 5000
     setShowHistoryModal(true)
     setHistoryError(false)
@@ -342,6 +360,21 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
       if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0
     })
   }, [fetchHistory, historyItems.length])
+
+  // openHistoryModal の最新版を ref に保持（宣言の直後）
+  useEffect(() => {
+    openHistoryModalRef.current = openHistoryModal
+  }, [openHistoryModal])
+
+  // リストタップなど外部からモーダルを開く要求が来たとき
+  useEffect(() => {
+    if (requestedOpen) {
+      openHistoryModalRef.current?.()
+      onModalOpened?.()
+    }
+  // requestedOpen が true になったときだけ動かす
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedOpen])
 
   // タッチタップを直接処理（touchstart で e.preventDefault しないと click が来ない端末対策）
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
@@ -491,6 +524,8 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                   const isConfirmed = item.confirmed_index !== null || item.manually_confirmed === true || locallyConfirmedIds.has(item.id)
                   // 確定済みの場合は返信セクションを表示しない
                   const hasReply = item.replied_at !== null && !isConfirmed
+                  // ドラフト（未送信）のアイテムかどうか
+                  const isDraftItem = !isConfirmed && !item.replied_at && draft?.meetingId === item.id
                   const confirmedCandidate =
                     item.confirmed_index !== null && item.candidates?.[item.confirmed_index]
                       ? item.candidates[item.confirmed_index]
@@ -503,13 +538,18 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                       className="rounded-xl p-3 space-y-2"
                       style={{ background: '#fffdf7', border: '1.5px solid #d4a853' }}
                     >
-                      {/* 上部: 日付 + ステータスバッジ */}
+                      {/* 上部: 日付・名前 + ステータスバッジ */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <span className="text-xs" style={{ color: '#8b6914' }}>
-                            {formatDate(item.created_at)}
-                          </span>
-                          <p className="mt-0.5 text-sm font-semibold truncate" style={{ color: '#2c1a0e' }}>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs" style={{ color: '#8b6914' }}>
+                              {formatDate(item.created_at)}
+                            </span>
+                            <span className="text-xs font-semibold" style={{ color: '#3d2b0e' }}>
+                              {item.student_name}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-sm font-semibold" style={{ color: '#2c1a0e' }}>
                             {item.purpose}
                           </p>
                         </div>
@@ -520,6 +560,10 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                         ) : hasReply ? (
                           <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: '#dbeafe', color: '#1e40af' }}>
                             📬 返信あり
+                          </span>
+                        ) : isDraftItem ? (
+                          <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: '#ffedd5', color: '#9a3412' }}>
+                            📋 未送信
                           </span>
                         ) : (
                           <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: '#fef3c7', color: '#92400e' }}>
@@ -551,7 +595,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                         </div>
                       )}
 
-                      {/* 返信あり: 別日提案内容 + 手動確定ボタン */}
+                      {/* 返信あり: 別日提案内容 + アクションボタン */}
                       {hasReply && (
                         <div className="space-y-2">
                           {item.alternative_candidates && item.alternative_candidates.length > 0 && (
@@ -568,13 +612,16 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                               )}
                             </div>
                           )}
+                          <div className="rounded-lg px-2.5 py-1.5 text-xs" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+                            <p style={{ color: '#78350f' }}>💡 チャットで合意した日時で確定するか、新しいリクエストを作成して別の候補を送れます</p>
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleManualConfirmItem(item.id)}
                             disabled={isConfirming}
                             className="farm-btn flex h-11 w-full items-center justify-center text-xs focus:outline-none transition-colors disabled:opacity-60"
                           >
-                            {isConfirming ? '確定中...' : '手動で確定する'}
+                            {isConfirming ? '確定中...' : '✅ チャットで確定した（手動確定）'}
                           </button>
                         </div>
                       )}
@@ -717,8 +764,8 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
           />
 
           {isCrown && (
-            <img src="/images/processed_a4.png" alt="王冠" width={24} height={24}
-              className="absolute left-1/2 -translate-x-1/2" style={{ top: -20 }} draggable={false} />
+            <img src="/images/processed_a4.png" alt="王冠" width={40} height={40}
+              className="absolute left-1/2 -translate-x-1/2" style={{ top: -36 }} draggable={false} />
           )}
           {showZzz && (
             <img src="/images/processed_a5.png" alt="ZZZ" width={20} height={20}
@@ -726,23 +773,15 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
           )}
           {showKira && !showHeart && (
             <img src="/images/processed_a2.png" alt="キラキラ" width={20} height={20}
-              className="absolute animate-pulse" style={{ top: -8, left: -8 }} draggable={false} />
+              className="absolute animate-pulse" style={{ top: '8%', right: '8%' }} draggable={false} />
           )}
           {showHeart && (
             <img
               src={kiraPhase ? '/images/processed_a2.png' : '/images/processed_a3.png'}
               alt={kiraPhase ? 'キラキラ' : 'ハート'}
               width={20} height={20}
-              className="absolute" style={{ top: -8, left: -8 }} draggable={false}
+              className="absolute" style={{ top: '8%', right: '8%' }} draggable={false}
             />
-          )}
-          {(showReplied || hasDraft) && (
-            <span
-              className="absolute pointer-events-none font-extrabold"
-              style={{ top: -14, right: -8, fontSize: 10, color: '#dc2626', textShadow: '0 0 3px white, 0 0 3px white, 0 0 3px white', lineHeight: 1, whiteSpace: 'nowrap' }}
-            >
-              {hasDraft ? '未送信' : '返信あり'}
-            </span>
           )}
         </div>
 
@@ -762,9 +801,14 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
   )
 }
 
-type Props = { contacts: FarmContactWithCount[] }
+type Props = {
+  contacts: FarmContactWithCount[]
+  openModalContactId?: string | null
+  onModalOpened?: () => void
+  onDraftCleared?: (contactId: string) => void
+}
 
-export default function FarmCharacters({ contacts }: Props) {
+export default function FarmCharacters({ contacts, openModalContactId, onModalOpened, onDraftCleared }: Props) {
   const initCounts = useCallback(() => {
     const replied: Record<string, number> = {}
     const confirmed: Record<string, number> = {}
@@ -888,6 +932,9 @@ export default function FarmCharacters({ contacts }: Props) {
           index={index}
           isCrown={contact.id === crownId}
           onManualConfirmed={handleManualConfirmed}
+          onDraftCleared={onDraftCleared}
+          requestedOpen={openModalContactId === contact.id}
+          onModalOpened={onModalOpened}
         />
       ))}
     </>

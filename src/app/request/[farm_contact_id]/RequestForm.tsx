@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Candidate } from '@/types/meeting'
 import { getSupabase } from '@/lib/supabase'
 
@@ -20,38 +21,59 @@ type FormErrors = {
 const MAX_CANDIDATES = 5
 const MIN_DATE = new Date().toISOString().split('T')[0]
 
+// 30分刻みの時間選択肢 (06:00〜22:00)
+const TIME_OPTIONS: string[] = (() => {
+  const options: string[] = []
+  for (let h = 6; h <= 22; h++) {
+    options.push(`${String(h).padStart(2, '0')}:00`)
+    if (h < 22) {
+      options.push(`${String(h).padStart(2, '0')}:30`)
+    }
+  }
+  return options
+})()
+
 function createEmptyCandidate(): Candidate {
   return { date: '', time: '' }
 }
 
 export default function RequestForm({ farmContactId, contactName, confirmedCount }: Props) {
+  const router = useRouter()
   const [studentName, setStudentName] = useState('')
   const [purpose, setPurpose] = useState('')
   const [candidates, setCandidates] = useState<Candidate[]>([createEmptyCandidate()])
+  // 各候補の「詳細な時刻を入力」モード
+  const [preciseModes, setPreciseModes] = useState<boolean[]>([false])
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  // submittedInfo: 送信成功後に meetingId と url を保持する
   const [submittedInfo, setSubmittedInfo] = useState<{ meetingId: string; url: string } | null>(null)
-  // sendChoice: null=未選択 / 'now'=今送る選択後 / 'later'=後で選択後
-  const [sendChoice, setSendChoice] = useState<'now' | 'later' | null>(null)
+  const [sendChoice, setSendChoice] = useState<'now' | null>(null)
   const [isCopied, setIsCopied] = useState(false)
 
   function addCandidate() {
     if (candidates.length < MAX_CANDIDATES) {
       setCandidates((prev) => [...prev, createEmptyCandidate()])
+      setPreciseModes((prev) => [...prev, false])
     }
   }
 
   function removeCandidate(index: number) {
     setCandidates((prev) => prev.filter((_, i) => i !== index))
+    setPreciseModes((prev) => prev.filter((_, i) => i !== index))
   }
 
-  // datetime-local の値 ("2024-01-15T09:00") を date と time に分解してセットする
-  function updateCandidateDatetime(index: number, value: string) {
-    const [date = '', time = ''] = value.split('T')
-    setCandidates((prev) =>
-      prev.map((c, i) => (i === index ? { ...c, date, time } : c))
-    )
+  function updateDate(index: number, date: string) {
+    setCandidates((prev) => prev.map((c, i) => (i === index ? { ...c, date } : c)))
+  }
+
+  function updateTime(index: number, time: string) {
+    setCandidates((prev) => prev.map((c, i) => (i === index ? { ...c, time } : c)))
+  }
+
+  function togglePreciseMode(index: number) {
+    setPreciseModes((prev) => prev.map((v, i) => (i === index ? !v : v)))
+    // 精密モードに切り替えるとき time をクリア
+    setCandidates((prev) => prev.map((c, i) => (i === index ? { ...c, time: '' } : c)))
   }
 
   function validate(): boolean {
@@ -141,92 +163,52 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
       savedAt: new Date().toISOString(),
     }
     localStorage.setItem(`phase3_draft_${farmContactId}`, JSON.stringify(draft))
-    setSendChoice('later')
+    router.push('/farm')
   }
 
-  // 確認・完了画面
+  // 「今送る」を選んだ後: コピー完了フィードバック → 農園に戻る誘導
+  if (submittedInfo && sendChoice === 'now') {
+    return (
+      <div className="farm-card p-6 space-y-4">
+        <div className="text-center">
+          <div className="mb-2 text-5xl" role="img" aria-label="完了">🎉</div>
+          <h2 className="text-lg font-bold" style={{ color: '#2c1a0e' }}>
+            URLをコピーしました！
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: '#8b6914' }}>
+            {contactName}さんにURLを送りましょう
+          </p>
+        </div>
+
+        <div className="rounded-xl px-4 py-3" style={{ border: '1.5px solid #d4a853', background: '#fef7e4' }}>
+          <p className="break-all text-sm font-mono" style={{ color: '#2c1a0e' }}>
+            {submittedInfo.url}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="farm-btn flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400"
+        >
+          {isCopied ? 'コピーしました！' : 'もう一度コピー'}
+        </button>
+
+        <a
+          href="/farm"
+          className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+          style={{ border: '2px solid #c8953a', color: '#4a8c5c', background: '#fef7e4' }}
+        >
+          農園に戻る
+        </a>
+      </div>
+    )
+  }
+
+  // 未選択状態: 「今送りますか？後で送りますか？」の確認画面
   if (submittedInfo) {
     const nextCount = confirmedCount + 1
 
-    // 「今送る」を選んだ後: コピー完了フィードバック → 農園に戻る誘導
-    if (sendChoice === 'now') {
-      return (
-        <div className="farm-card p-6 space-y-4">
-          <div className="text-center">
-            <div className="mb-2 text-5xl" role="img" aria-label="完了">🎉</div>
-            <h2 className="text-lg font-bold" style={{ color: '#2c1a0e' }}>
-              URLをコピーしました！
-            </h2>
-            <p className="mt-1 text-sm" style={{ color: '#8b6914' }}>
-              {contactName}さんにURLを送りましょう
-            </p>
-          </div>
-
-          <div className="rounded-xl px-4 py-3" style={{ border: '1.5px solid #d4a853', background: '#fef7e4' }}>
-            <p className="break-all text-sm font-mono" style={{ color: '#2c1a0e' }}>
-              {submittedInfo.url}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="farm-btn flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400"
-          >
-            {isCopied ? 'コピーしました！' : 'もう一度コピー'}
-          </button>
-
-          <a
-            href="/farm"
-            className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
-            style={{ border: '2px solid #c8953a', color: '#4a8c5c', background: '#fef7e4' }}
-          >
-            農園に戻る
-          </a>
-        </div>
-      )
-    }
-
-    // 「後で」を選んだ後: URLコピー + 農園へ戻る
-    if (sendChoice === 'later') {
-      return (
-        <div className="farm-card p-6 space-y-4">
-          <div className="text-center">
-            <div className="mb-2 text-4xl" role="img" aria-label="保存">📋</div>
-            <h2 className="text-lg font-bold" style={{ color: '#2c1a0e' }}>
-              下書きを保存しました
-            </h2>
-            <p className="mt-1 text-sm" style={{ color: '#8b6914' }}>
-              {contactName}さんにこのURLを送ってください
-            </p>
-          </div>
-
-          <div className="rounded-xl px-4 py-3" style={{ border: '1.5px solid #d4a853', background: '#fef7e4' }}>
-            <p className="break-all text-sm font-mono" style={{ color: '#2c1a0e' }}>
-              {submittedInfo.url}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="farm-btn flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400"
-          >
-            {isCopied ? 'コピーしました！' : 'URLをコピー'}
-          </button>
-
-          <a
-            href="/farm"
-            className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
-            style={{ border: '2px solid #c8953a', color: '#4a8c5c', background: '#fef7e4' }}
-          >
-            農園に戻る
-          </a>
-        </div>
-      )
-    }
-
-    // 未選択状態: 「今送りますか？後で送りますか？」の確認画面
     return (
       <div className="farm-card p-6 space-y-4">
         <div className="text-center">
@@ -234,16 +216,16 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           <h2 className="text-lg font-bold" style={{ color: '#2c1a0e' }}>
             リクエストを作成しました！
           </h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm" style={{ color: '#8b6914' }}>
             {confirmedCount === 0
               ? `${contactName}さんとはじめてのリクエストです`
               : `${contactName}さんとは今まで${confirmedCount}回確定済み。今回が${nextCount}回目のリクエストです`}
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
+        <div className="rounded-xl px-4 py-3" style={{ border: '1.5px solid #d4a853', background: '#fef7e4' }}>
           <p className="mb-1 text-xs font-semibold" style={{ color: '#8b6914' }}>送付URL</p>
-          <p className="break-all text-sm font-mono text-gray-700 dark:text-gray-300">
+          <p className="break-all text-sm font-mono" style={{ color: '#2c1a0e' }}>
             {submittedInfo.url}
           </p>
         </div>
@@ -267,7 +249,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
             className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
             style={{ border: '2px solid #c8953a', color: '#4a8c5c', background: '#fef7e4' }}
           >
-            後で送る
+            後で送る（農園に戻る）
           </button>
         </div>
       </div>
@@ -345,37 +327,86 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           {candidates.map((candidate, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 rounded-xl p-3"
+              className="rounded-xl p-3"
               style={{ border: '1.5px solid #d4a853', background: '#fef7e4' }}
             >
-              <span className="shrink-0 text-xs font-medium w-5 text-center" style={{ color: '#8b6914' }}>
-                {index + 1}
-              </span>
-              <div className="flex flex-1 flex-col gap-1">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="shrink-0 text-xs font-medium w-5 text-center" style={{ color: '#8b6914' }}>
+                  {index + 1}
+                </span>
+                <span className="text-xs font-medium" style={{ color: '#3d2b0e' }}>候補 {index + 1}</span>
+                {candidates.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeCandidate(index)}
+                    aria-label={`候補日${index + 1}を削除`}
+                    className="ml-auto h-8 w-8 flex items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 transition-colors"
+                    style={{ color: '#b91c1c' }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              {/* 日付 */}
+              <div className="mb-2">
                 <input
-                  type="datetime-local"
-                  value={candidate.date && candidate.time ? `${candidate.date}T${candidate.time}` : ''}
-                  min={`${MIN_DATE}T00:00`}
-                  onChange={(e) => updateCandidateDatetime(index, e.target.value)}
-                  aria-label={`候補日${index + 1}の日時`}
+                  type="date"
+                  min={MIN_DATE}
+                  value={candidate.date}
+                  onChange={(e) => updateDate(index, e.target.value)}
+                  aria-label={`候補日${index + 1}の日付`}
                   className="w-full h-11 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
                 />
-                <p className="text-xs pl-1" style={{ color: '#8b6914' }}>
-                  開始時刻を設定してください
-                </p>
               </div>
-              {candidates.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeCandidate(index)}
-                  aria-label={`候補日${index + 1}を削除`}
-                  className="shrink-0 h-11 w-11 flex items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 transition-colors"
-                  style={{ color: '#b91c1c' }}
-                >
-                  ×
-                </button>
-              )}
+
+              {/* 時間: 30分刻みセレクト or 精密入力 */}
+              <div>
+                {!preciseModes[index] ? (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={candidate.time}
+                      onChange={(e) => updateTime(index, e.target.value)}
+                      aria-label={`候補日${index + 1}の時間`}
+                      className="flex-1 h-11 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                      style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: candidate.time ? '#2c1a0e' : '#8b6914' }}
+                    >
+                      <option value="">時間を選択（30分刻み）</option>
+                      {TIME_OPTIONS.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => togglePreciseMode(index)}
+                      className="shrink-0 text-xs px-2 py-1 rounded-lg focus:outline-none transition-colors"
+                      style={{ border: '1px solid #c8953a', color: '#6b4c0a', background: '#fffdf7', whiteSpace: 'nowrap' }}
+                    >
+                      詳細
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={candidate.time}
+                      onChange={(e) => updateTime(index, e.target.value)}
+                      aria-label={`候補日${index + 1}の時間（詳細）`}
+                      className="flex-1 h-11 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                      style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePreciseMode(index)}
+                      className="shrink-0 text-xs px-2 py-1 rounded-lg focus:outline-none transition-colors"
+                      style={{ border: '1px solid #c8953a', color: '#6b4c0a', background: '#fffdf7', whiteSpace: 'nowrap' }}
+                    >
+                      30分刻み
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
