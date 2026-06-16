@@ -116,7 +116,6 @@ export default function AddContactForm({ farmId }: Props) {
               className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
               style={{
                 width: 96, height: 96,
-                background: 'radial-gradient(ellipse at 50% 60%, rgba(255,255,255,0.85) 0%, rgba(240,230,200,0.5) 100%)',
                 border: '2px solid #7cb87c',
               }}
             >
@@ -165,9 +164,7 @@ export default function AddContactForm({ farmId }: Props) {
                 }}
                 className="flex flex-col items-center justify-center rounded-lg p-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400 min-h-[52px]"
                 style={{
-                  background: isSelected
-                    ? 'radial-gradient(ellipse at center, rgba(200,240,200,0.9) 0%, rgba(42,92,30,0.15) 100%)'
-                    : 'radial-gradient(ellipse at center, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0) 100%)',
+                  background: isSelected ? 'rgba(42,92,30,0.15)' : 'transparent',
                   border: isSelected ? '2px solid #4a8c5c' : '2px solid transparent',
                   transform: isSelected ? 'scale(1.08)' : 'scale(1)',
                 }}

@@ -606,11 +606,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
         {/* キャラ本体 + オーバーレイ */}
         <div
           className="relative"
-          style={{
-            width: 80 * scale,
-            height: 80 * scale,
-            background: 'radial-gradient(ellipse at 50% 60%, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0) 72%)',
-          }}
+          style={{ width: 80 * scale, height: 80 * scale }}
         >
           <img
             ref={imgRef}
