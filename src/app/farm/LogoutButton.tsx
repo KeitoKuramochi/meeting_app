@@ -16,7 +16,8 @@ export default function LogoutButton() {
     <button
       type="button"
       onClick={handleLogout}
-      className="h-11 px-4 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+      className="h-9 px-3 flex items-center justify-center rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-400 transition-colors"
+      style={{ color: 'rgba(245,230,163,0.8)', border: '1px solid rgba(245,230,163,0.3)' }}
     >
       ログアウト
     </button>

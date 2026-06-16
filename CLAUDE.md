@@ -13,11 +13,20 @@
 
 ## エージェント構成
 
-| エージェント | 役割 | 使用ツール |
+| エージェント | 役割 | 主要ツール・プラグイン |
 |---|---|---|
-| Planner | idea.md を仕様・TASKに展開する | Read, Write, Edit |
-| Generator | TASKを1つずつ実装・build・commit する | Read, Write, Edit, Bash |
-| Evaluator | Playwright MCPで実際に操作して評価する | Read, mcp__playwright |
+| Planner | idea.md を仕様・TASKに展開する（セキュリティ要件も定義） | context7 MCP, /revise-claude-md |
+| Generator | TASKを1つずつ実装・build・commit する | /feature-dev, /commit, /code-review, context7 MCP, security-guidance（自動）, typescript-lsp（自動）, frontend-design（自動） |
+| Security Auditor | commit後にセキュリティレビューを行う | /security-review, security-guidance |
+| Evaluator | Playwright MCPで実際に操作・パフォーマンスを評価する | Playwright MCP, /web-perf, /verify |
+
+### 自動で動くプラグイン（全エージェント共通）
+
+| プラグイン | 動作 |
+|---|---|
+| **security-guidance** | ファイル編集時・commit時に自動でセキュリティチェック |
+| **typescript-lsp** | TypeScriptファイル編集時に型エラーをリアルタイム検出 |
+| **frontend-design** | UI実装時にプロダクション品質のデザインを自動適用 |
 
 ---
 
@@ -26,15 +35,32 @@
 ```
 人間: idea.md を書く
   ↓
-Planner: 仕様作成 → PROJECT_PLAN.md / REQUIREMENTS.md / MVP_TASKS.md / SPRINT_CONTRACT.md
+Planner: 仕様作成（context7で最新ドキュメント参照）
+  → PROJECT_PLAN.md / REQUIREMENTS.md（セキュリティ要件含む）
+  → MVP_TASKS.md / SPRINT_CONTRACT.md
   ↓
-Generator: TASK を1つ実装 → build → commit → STATUS.md 更新
+Generator: TASK を1つ実装
+  → 複雑な機能は /feature-dev で7フェーズ実装
+  → context7 で最新 API を参照
+  → security-guidance の警告に対応
+  → npm run build 確認
+  → /code-review で自己レビュー
+  → /commit でコミット
   ↓
-Evaluator: Playwright MCP で実際に操作 → 合格 / 不合格
+Security Auditor: セキュリティレビュー
+  → /security-review でコードベース横断チェック
+  → CRITICAL/HIGH があれば Generator に差し戻し
+  ↓
+Evaluator: 品質評価
+  → Playwright MCP で実際にブラウザ操作
+  → /web-perf で Core Web Vitals 計測
+  → 合格 / 不合格
   ↓ 不合格の場合
-Generator: Evaluator の修正プロンプトで再実装
+Generator: 修正プロンプトで再実装 → Security Auditor → Evaluator
   ↓ 合格の場合
 次の TASK へ
+  ↓ スプリント完了後
+Planner: /revise-claude-md で CLAUDE.md を更新
 ```
 
 ---
@@ -97,15 +123,16 @@ idea.md                        # 人間が書くアイデア（1〜4行）
 CLAUDE.md                      # 本ファイル：運用ルール
 docs/
   PROJECT_PLAN.md              # Planner が作る製品仕様書
-  REQUIREMENTS.md              # Planner が作る要件定義
+  REQUIREMENTS.md              # Planner が作る要件定義（セキュリティ要件含む）
   MVP_TASKS.md                 # Planner が作るタスク一覧
-  SPRINT_CONTRACT.md           # 各TASKの完了条件
+  SPRINT_CONTRACT.md           # 各TASKの完了条件（Security Auditor / Evaluator の確認手順含む）
   STATUS.md                    # Generator が更新する進捗
   ERROR_FIX_LOOP.md            # build エラー時の修正ルール
   EVALUATION_CRITERIA.md       # Evaluator の評価基準
 .claude/
   agents/
-    planner.md                 # Planner エージェント定義
-    generator.md               # Generator エージェント定義
-    evaluator.md               # Evaluator エージェント定義
+    planner.md                 # Planner エージェント定義（context7 / /revise-claude-md）
+    generator.md               # Generator エージェント定義（/feature-dev / /commit / /code-review / context7）
+    security-auditor.md        # Security Auditor エージェント定義（/security-review）★新規
+    evaluator.md               # Evaluator エージェント定義（Playwright MCP / /web-perf）
 ```

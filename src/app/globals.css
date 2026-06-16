@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5ede0;
+  --foreground: #2c1a0e;
 }
 
 @theme inline {
@@ -14,8 +14,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #1a1208;
+    --foreground: #f5e6c8;
   }
 }
 
@@ -23,4 +23,53 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Farm header – wooden sign */
+.farm-header {
+  background: linear-gradient(180deg, #2a5c1e 0%, #1a3d12 100%);
+  box-shadow: 0 3px 0 #0f2509, 0 4px 12px rgba(0,0,0,0.25);
+}
+
+/* Parchment card */
+.farm-card {
+  background: #fef7e4;
+  border: 2px solid #c8953a;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(107,68,35,0.12);
+}
+
+/* Primary farm button */
+.farm-btn {
+  background: linear-gradient(180deg, #4a8c5c 0%, #2d6b3f 100%);
+  border-bottom: 3px solid #1a4225;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 12px;
+  transition: all 0.1s;
+}
+.farm-btn:hover { transform: translateY(-1px); }
+.farm-btn:active { transform: translateY(1px); border-bottom-width: 1px; }
+
+/* Gold accent button */
+.farm-btn-gold {
+  background: linear-gradient(180deg, #d4a030 0%, #a8780a 100%);
+  border-bottom: 3px solid #6b4c05;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 10px;
+  transition: all 0.1s;
+}
+.farm-btn-gold:hover { transform: translateY(-1px); }
+.farm-btn-gold:active { transform: translateY(1px); border-bottom-width: 1px; }
+
+/* Pixel-art characters */
+.pixel-char { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* Farm modal */
+.farm-modal {
+  background: #fef7e4;
+  border: 3px solid #c8953a;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(107,68,35,0.35);
 }

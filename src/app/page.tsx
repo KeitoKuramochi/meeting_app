@@ -4,71 +4,54 @@ import OAuthLoginButtons from './_components/OAuthLoginButtons'
 
 export default function TopPage() {
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-emerald-50 dark:bg-gray-950">
-      {/* 背景農園画像（薄く表示） */}
-      <div className="absolute inset-0 opacity-20 dark:opacity-10 pointer-events-none select-none">
-        <Image
-          src="/images/nouen.png"
-          alt=""
-          fill
-          className="object-cover object-bottom"
-          priority
-          sizes="100vw"
-        />
+    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden" style={{ background: '#f5ede0' }}>
+      {/* Farm background */}
+      <div className="absolute inset-0 pointer-events-none select-none opacity-30">
+        <Image src="/images/nouen.png" alt="" fill className="object-cover object-bottom" priority sizes="100vw" />
       </div>
 
-      {/* コンテンツ */}
-      <main className="relative z-10 w-full max-w-sm px-4 py-12 flex flex-col items-center gap-8">
-        {/* ロゴ・タイトル */}
+      <main className="relative z-10 w-full max-w-sm px-4 py-10 flex flex-col items-center gap-7">
+        {/* Logo */}
         <div className="text-center">
-          <div className="text-6xl mb-3" role="img" aria-label="農場">
-            🌾
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-emerald-800 dark:text-emerald-300">
-            のうえんミーティング
+          <div className="text-7xl mb-3" role="img" aria-label="農場">🌾</div>
+          <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#1a3d12', textShadow: '0 1px 0 rgba(255,255,255,0.5)' }}>
+            のうえん<wbr />ミーティング
           </h1>
-          <p className="mt-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
-            だれとでも、日程調整をもっと楽しく。
+          <p className="mt-2 text-sm font-semibold" style={{ color: '#4a7c59' }}>
+            日程調整を、農園ゲームにしよう
           </p>
         </div>
 
-        {/* アプリ説明 */}
-        <div className="w-full rounded-2xl border border-emerald-200 bg-white/80 backdrop-blur-sm p-5 shadow-md dark:bg-gray-900/80 dark:border-emerald-800">
-          <ul className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-500 mt-0.5 shrink-0">🌱</span>
-              <span>相手をキャラクターとして農園に登録できる</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-500 mt-0.5 shrink-0">📅</span>
-              <span>候補日を送るだけで相手がワンクリックで確定</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-500 mt-0.5 shrink-0">🏆</span>
-              <span>ミーティングを重ねるごとにキャラが成長する</span>
-            </li>
-          </ul>
+        {/* Feature cards */}
+        <div className="w-full rounded-2xl p-4 space-y-3" style={{ background: '#fef7e4', border: '2px solid #c8953a' }}>
+          <p className="text-xs font-bold uppercase tracking-wide text-center" style={{ color: '#8b6914' }}>できること</p>
+          {[
+            { emoji: '🐾', text: '相手をキャラとして農園に登録' },
+            { emoji: '📅', text: 'URLを送るだけで日程を確定' },
+            { emoji: '🏆', text: '会うたびにキャラが成長する' },
+          ].map(({ emoji, text }) => (
+            <div key={text} className="flex items-center gap-3 py-1">
+              <span className="text-xl shrink-0">{emoji}</span>
+              <span className="text-sm font-medium" style={{ color: '#3d2b0e' }}>{text}</span>
+            </div>
+          ))}
         </div>
 
-        {/* ログインボタン */}
+        {/* Login */}
         <div className="w-full">
-          <p className="mb-4 text-center text-xs text-gray-500 dark:text-gray-400">
-            アカウントでログインして始める
+          <p className="mb-3 text-center text-xs font-medium" style={{ color: '#6b4c0a' }}>
+            ログインして農園をはじめる
           </p>
           <OAuthLoginButtons />
           <div className="mt-4 text-center">
-            <Link
-              href="/demo"
-              className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded"
-            >
-              ログイン無しでデモを見る →
+            <Link href="/demo" className="text-sm font-medium hover:underline focus:outline-none" style={{ color: '#4a7c59' }}>
+              ログインなしでデモを見る →
             </Link>
           </div>
         </div>
       </main>
 
-      {/* フッター */}
-      <footer className="relative z-10 pb-6 text-center text-xs text-gray-400 dark:text-gray-600">
+      <footer className="relative z-10 pb-6 text-center text-xs" style={{ color: '#8b6914' }}>
         &copy; {new Date().getFullYear()} のうえんミーティング
       </footer>
     </div>

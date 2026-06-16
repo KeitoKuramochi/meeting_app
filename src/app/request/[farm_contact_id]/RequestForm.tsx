@@ -286,22 +286,26 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 p-6 shadow-sm"
+      className="farm-card p-6"
     >
       {/* お名前 */}
       <div className="mb-5">
         <label
           htmlFor="student-name"
-          className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+          className="block text-sm font-semibold mb-1"
+          style={{ color: '#3d2b0e' }}
         >
-          お名前
+          あなたのお名前
         </label>
+        <p className="text-xs mb-2" style={{ color: '#8b6914' }}>
+          相手に表示される、あなた自身の名前です
+        </p>
         <input
           id="student-name"
           type="text"
           value={studentName}
           onChange={(e) => setStudentName(e.target.value)}
-          placeholder="例：山田 太郎"
+          placeholder="例：山田 太郎（あなた自身の名前）"
           className="w-full h-12 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
           autoComplete="name"
         />
@@ -415,7 +419,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
       <button
         type="submit"
         disabled={isSubmitting}
-        className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        className="farm-btn flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isSubmitting ? '送信中...' : 'リクエストを送る'}
       </button>

@@ -46,17 +46,20 @@ export default async function FarmAddPage() {
   }
 
   return (
-    <div className="min-h-screen bg-emerald-50 dark:bg-gray-950">
+    <div className="min-h-screen" style={{ background: '#f5ede0' }}>
       {/* ヘッダー */}
-      <header className="flex items-center gap-3 px-4 py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm">
+      <header
+        className="flex items-center gap-3 px-4 py-3 farm-header"
+      >
         <Link
           href="/farm"
-          className="h-11 w-11 flex items-center justify-center rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+          className="h-10 w-10 flex items-center justify-center rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-amber-400 transition-colors"
+          style={{ color: '#f5e6a3' }}
           aria-label="農園に戻る"
         >
           ←
         </Link>
-        <h1 className="text-lg font-bold text-emerald-800 dark:text-emerald-300">相手を追加</h1>
+        <h1 className="text-lg font-bold" style={{ color: '#f5e6a3' }}>相手を追加</h1>
       </header>
 
       {/* フォームエリア */}

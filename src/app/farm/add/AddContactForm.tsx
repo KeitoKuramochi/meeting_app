@@ -23,30 +23,25 @@ export default function AddContactForm({ farmId }: Props) {
 
   function validate(): boolean {
     let valid = true
-
     if (contactName.trim() === '') {
       setNameError('名前を入力してください')
       valid = false
     } else {
       setNameError('')
     }
-
     if (selectedCharacter === null) {
       setCharacterError('キャラクターを選んでください')
       valid = false
     } else {
       setCharacterError('')
     }
-
     return valid
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSubmitError('')
-
     if (!validate()) return
-
     setIsSubmitting(true)
     try {
       const supabase = createSupabaseBrowserClient()
@@ -55,13 +50,11 @@ export default function AddContactForm({ farmId }: Props) {
         contact_name: contactName.trim(),
         character_number: selectedCharacter,
       })
-
       if (error) {
         setSubmitError('登録に失敗しました。もう一度お試しください。')
         setIsSubmitting(false)
         return
       }
-
       router.push('/farm')
     } catch {
       setSubmitError('予期しないエラーが発生しました。')
@@ -71,41 +64,90 @@ export default function AddContactForm({ farmId }: Props) {
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      {/* 名前入力 */}
-      <div className="mb-6">
+      {/* Name input */}
+      <div
+        className="mb-5 p-4 rounded-2xl"
+        style={{ background: '#fef7e4', border: '2px solid #d4a853' }}
+      >
         <label
           htmlFor="contact-name"
-          className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+          className="block text-sm font-bold mb-1"
+          style={{ color: '#3d2b0e' }}
         >
           相手の名前
         </label>
+        <p className="text-xs mb-2" style={{ color: '#8b6914' }}>
+          農園に表示される名前です
+        </p>
         <input
           id="contact-name"
           type="text"
           value={contactName}
           onChange={(e) => setContactName(e.target.value)}
           placeholder="例：田中さん、田中教授"
-          className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 h-12 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
+          className="w-full h-12 rounded-xl px-4 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          style={{ border: '2px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
           autoComplete="off"
         />
         {nameError && (
-          <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
-            {nameError}
-          </p>
+          <p role="alert" className="mt-1.5 text-sm text-red-600">{nameError}</p>
         )}
       </div>
 
-      {/* キャラクター選択 */}
-      <div className="mb-6">
-        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          キャラクターを選んでください
+      {/* Character selection */}
+      <div
+        className="mb-5 p-4 rounded-2xl"
+        style={{ background: '#fef7e4', border: '2px solid #d4a853' }}
+      >
+        <p className="text-sm font-bold mb-1" style={{ color: '#3d2b0e' }}>
+          キャラクターを選ぶ
         </p>
+        <p className="text-xs mb-3" style={{ color: '#8b6914' }}>
+          相手を表すキャラです。タップして選んでください
+        </p>
+
+        {/* Selected character preview */}
         {selectedCharacter !== null && (
-          <p className="text-sm text-emerald-700 dark:text-emerald-400 mb-2">
-            キャラクター #{selectedCharacter} を選択中
-          </p>
+          <div
+            className="flex items-center gap-4 p-3 rounded-xl mb-3"
+            style={{ background: 'rgba(42,92,30,0.08)', border: '2px solid #4a8c5c' }}
+          >
+            <div
+              className="shrink-0 rounded-xl overflow-hidden"
+              style={{ width: 96, height: 96, background: 'rgba(0,0,0,0.04)', border: '2px solid #7cb87c' }}
+            >
+              <img
+                src={'/images/processed_' + selectedCharacter + '.png'}
+                alt={'キャラクター ' + selectedCharacter}
+                width={96}
+                height={96}
+                className="w-full h-full object-contain pixel-char"
+                draggable={false}
+              />
+            </div>
+            <div>
+              <p className="text-xs font-bold" style={{ color: '#2a5c1e' }}>選択中</p>
+              <p className="text-lg font-extrabold mt-0.5" style={{ color: '#2a5c1e' }}>
+                キャラ #{selectedCharacter}
+              </p>
+              {contactName.trim() && (
+                <p className="text-sm mt-1" style={{ color: '#4a8c5c' }}>
+                  {contactName.trim()} の担当キャラ
+                </p>
+              )}
+            </div>
+          </div>
         )}
-        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-3 max-h-96 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-800">
+
+        {/* Character grid */}
+        <div
+          className="grid gap-1.5 max-h-72 overflow-y-auto rounded-xl p-2"
+          style={{
+            gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))',
+            background: '#fffdf7',
+            border: '1.5px solid #d4a853',
+          }}
+        >
           {characterNumbers.map((num) => {
             const isSelected = selectedCharacter === num
             return (
@@ -116,50 +158,50 @@ export default function AddContactForm({ farmId }: Props) {
                   setSelectedCharacter(num)
                   setCharacterError('')
                 }}
-                className={[
-                  'flex flex-col items-center justify-center rounded-lg p-2 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400',
-                  'min-h-[44px]',
-                  isSelected
-                    ? 'ring-2 ring-emerald-500 bg-emerald-100 dark:bg-emerald-900/50 scale-105'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700',
-                ].join(' ')}
-                aria-label={`キャラクター ${num}`}
+                className="flex flex-col items-center justify-center rounded-lg p-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400 min-h-[52px]"
+                style={{
+                  background: isSelected ? 'rgba(42,92,30,0.15)' : 'transparent',
+                  border: isSelected ? '2px solid #4a8c5c' : '2px solid transparent',
+                  transform: isSelected ? 'scale(1.08)' : 'scale(1)',
+                }}
+                aria-label={'キャラクター ' + num}
                 aria-pressed={isSelected}
               >
                 <img
-                  src={`/images/processed_${num}.png`}
-                  alt={`キャラクター ${num}`}
-                  width={64}
-                  height={64}
-                  className="w-16 h-16 object-contain"
+                  src={'/images/processed_' + num + '.png'}
+                  alt={'キャラクター ' + num}
+                  width={48}
+                  height={48}
+                  className="object-contain pixel-char"
+                  style={{ width: 48, height: 48 }}
                   draggable={false}
                 />
-                <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">{num}</span>
               </button>
             )
           })}
         </div>
+
         {characterError && (
-          <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
-            {characterError}
-          </p>
+          <p role="alert" className="mt-2 text-sm text-red-600">{characterError}</p>
         )}
       </div>
 
-      {/* 送信エラー */}
+      {/* Submit error */}
       {submitError && (
-        <p role="alert" className="mb-4 text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="mb-4 text-sm text-red-600 rounded-lg px-4 py-3"
+          style={{ background: '#fef2f2', border: '1px solid #fca5a5' }}>
           {submitError}
         </p>
       )}
 
-      {/* 登録ボタン */}
+      {/* Submit button */}
       <button
         type="submit"
-        disabled={isSubmitting}
-        className="w-full h-12 rounded-xl bg-emerald-600 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        disabled={isSubmitting || selectedCharacter === null}
+        className="farm-btn w-full h-12 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+        style={{ opacity: selectedCharacter === null ? 0.5 : 1 }}
       >
-        {isSubmitting ? '登録中...' : '登録する'}
+        {isSubmitting ? '登録中...' : '農園に追加する 🌱'}
       </button>
     </form>
   )

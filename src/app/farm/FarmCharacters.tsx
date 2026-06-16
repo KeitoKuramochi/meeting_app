@@ -32,6 +32,7 @@ type MeetingReplyRow = {
   farm_contact_id: string
   replied_at: string | null
   confirmed_index: number | null
+  manually_confirmed: boolean | null  // ADD THIS
 }
 
 // 型ガード: 読み取った値が DraftData かを検証する
@@ -370,17 +371,19 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
       {/* 履歴モーダル */}
       {showHistoryModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(15,37,9,0.65)' }}
           onClick={() => setShowHistoryModal(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 shadow-xl overflow-hidden flex flex-col"
+            className="w-full max-w-sm overflow-hidden flex flex-col farm-modal"
             style={{ maxHeight: '85vh' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* ヘッダー */}
-            <div className="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 text-center">
-              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
+            <div className="px-5 pt-4 pb-3 text-center shrink-0 farm-header">
+              <h2 className="text-base font-bold"
+                style={{ color: '#f5e6a3' }}>
                 {contact.contact_name}のリクエスト
               </h2>
             </div>
@@ -532,18 +535,20 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
             </div>
 
             {/* フッター */}
-            <div className="px-4 pb-4 pt-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
+            <div className="px-4 pb-4 pt-3 space-y-2 shrink-0"
+              style={{ borderTop: '2px solid #d4a853' }}>
               <button
                 type="button"
                 onClick={() => { window.location.href = `/request/${contact.id}` }}
-                className="flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 dark:bg-emerald-700 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+                className="farm-btn flex h-11 w-full items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
               >
                 新しいリクエストを送る
               </button>
               <button
                 type="button"
                 onClick={() => setShowHistoryModal(false)}
-                className="flex h-10 w-full items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none transition-colors"
+                className="flex h-10 w-full items-center justify-center rounded-xl text-sm font-medium focus:outline-none transition-colors"
+                style={{ border: '1.5px solid #d4a853', color: '#6b4c0a', background: '#fef7e4' }}
               >
                 閉じる
               </button>
@@ -606,7 +611,8 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
             alt={contact.contact_name}
             width={80}
             height={80}
-            style={{ imageRendering: 'pixelated', width: '100%', height: '100%' }}
+            className="pixel-char"
+            style={{ width: '100%', height: '100%' }}
             draggable={false}
           />
 
@@ -633,7 +639,14 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
         </div>
 
         {/* 名前ラベル */}
-        <span className="mt-1 rounded-full bg-white/80 dark:bg-gray-900/80 px-2 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-300 shadow-sm whitespace-nowrap">
+        <span
+          className="mt-1 px-2 py-0.5 text-xs font-bold whitespace-nowrap rounded-full shadow-sm"
+          style={{
+            background: showReplied ? '#dbeafe' : hasDraft ? '#fed7aa' : 'rgba(255,247,228,0.95)',
+            color: showReplied ? '#1d4ed8' : hasDraft ? '#92400e' : '#2c1a0e',
+            border: showReplied ? '1px solid #93c5fd' : hasDraft ? '1px solid #fdba74' : '1px solid #d4a853',
+          }}
+        >
           {contact.contact_name}
         </span>
       </div>
@@ -672,7 +685,7 @@ export default function FarmCharacters({ contacts }: Props) {
         const supabase = createSupabaseBrowserClient()
         const { data } = await supabase
           .from('meetings')
-          .select('farm_contact_id, replied_at, confirmed_index')
+          .select('farm_contact_id, replied_at, confirmed_index, manually_confirmed')
           .in('farm_contact_id', contactIds)
 
         if (!data) return
@@ -687,7 +700,7 @@ export default function FarmCharacters({ contacts }: Props) {
           const cid = row.farm_contact_id
           if (!(cid in repliedMap)) continue
           if (row.replied_at !== null) repliedMap[cid] = (repliedMap[cid] ?? 0) + 1
-          if (row.confirmed_index !== null) confirmedMap[cid] = (confirmedMap[cid] ?? 0) + 1
+          if (row.confirmed_index !== null || row.manually_confirmed === true) confirmedMap[cid] = (confirmedMap[cid] ?? 0) + 1
         }
         setLiveRepliedCounts(repliedMap)
         setLiveConfirmedCounts(confirmedMap)
