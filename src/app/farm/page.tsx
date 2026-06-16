@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getSupabase } from '@/lib/supabase'
 import { Farm, FarmContact, FarmContactWithCount } from '@/types/farm'
 import FarmClientShell from './FarmClientShell'
 
@@ -66,22 +67,24 @@ async function FarmData({ farm }: { farm: Farm }) {
 
   if (farmContacts.length > 0) {
     const contactIds = farmContacts.map((c) => c.id)
+    // 匿名クライアントを使用: RLS が anon ロールに SELECT を許可しており
+    // リクエストページで動作が確認済み。認証済みクライアントでは読めないケースがある
+    const anonSupabase = getSupabase()
 
     const [{ data: confirmedData }, { data: pendingData }, { data: repliedData }] = await Promise.all([
-      // BUG-03 fix: count confirmed_index OR manually_confirmed
-      supabase
+      anonSupabase
         .from('meetings')
         .select('farm_contact_id')
         .in('farm_contact_id', contactIds)
         .or('confirmed_index.not.is.null,manually_confirmed.eq.true')
         .returns<{ farm_contact_id: string }[]>(),
-      supabase
+      anonSupabase
         .from('meetings')
         .select('farm_contact_id')
         .in('farm_contact_id', contactIds)
         .is('confirmed_index', null)
         .returns<{ farm_contact_id: string }[]>(),
-      supabase
+      anonSupabase
         .from('meetings')
         .select('farm_contact_id')
         .in('farm_contact_id', contactIds)

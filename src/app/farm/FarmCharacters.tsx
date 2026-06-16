@@ -121,6 +121,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
   const hasMovedRef = useRef(false)
   const touchTappedRef = useRef(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const slowdownUntilRef = useRef(0)
   const [grabbing, setGrabbing] = useState(false)
 
   // localStorage の draft
@@ -196,9 +197,11 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
       const parentEl = el?.parentElement
       const cw = parentEl?.offsetWidth ?? 375
       const sf = Math.min(1, 375 / cw)
+      // タップ後5秒間はスピードを1/10に落としてタップしやすくする
+      const tapSlowMult = Date.now() < slowdownUntilRef.current ? 0.1 : 1.0
 
-      s.x += s.vx * sf
-      s.y += s.vy * sf
+      s.x += s.vx * sf * tapSlowMult
+      s.y += s.vy * sf * tapSlowMult
 
       if (s.x < 8)  { s.x = 8;  s.vx =  Math.abs(s.vx) }
       if (s.x > 92) { s.x = 92; s.vx = -Math.abs(s.vx) }
@@ -320,6 +323,8 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, index, isCro
   }, [fetchHistory])
 
   const openHistoryModal = useCallback(() => {
+    // タップ後5秒間キャラをゆっくり動かしてタップしやすくする
+    slowdownUntilRef.current = Date.now() + 5000
     setShowHistoryModal(true)
     // キャッシュがなければローディング表示しつつ取得
     if (historyItems.length === 0) setIsLoadingHistory(true)
