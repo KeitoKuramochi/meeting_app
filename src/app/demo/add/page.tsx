@@ -139,7 +139,7 @@ export default function DemoAddPage() {
                 <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">選択中</p>
                 <div
                   className="rounded-2xl overflow-hidden flex items-center justify-center bg-white/60"
-                  style={{ width: 160, height: 160, border: '3px solid #4a8c5c' }}
+                  style={{ width: 160, height: 160, border: '3px solid #4a8c5c', boxSizing: 'content-box' }}
                 >
                   <img
                     src={`/images/processed_${selectedCharacter}.png`}
@@ -164,7 +164,7 @@ export default function DemoAddPage() {
             {/* キャラグリッド */}
             <div
               className="grid gap-1.5 max-h-72 overflow-y-auto rounded-xl p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))' }}
+              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))' }}
             >
               {characterNumbers.map((num) => {
                 const isSelected = selectedCharacter === num
@@ -192,7 +192,7 @@ export default function DemoAddPage() {
                       width={72}
                       height={72}
                       className="object-contain"
-                      style={{ width: 72, height: 72 }}
+                      style={{ width: 72, height: 72, minWidth: 72, minHeight: 72 }}
                       loading="lazy"
                       draggable={false}
                     />
