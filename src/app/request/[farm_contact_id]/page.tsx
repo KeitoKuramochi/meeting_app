@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import type { FarmContact } from '@/types/farm'
 import { getSupabase } from '@/lib/supabase'
 import RequestForm from './RequestForm'
@@ -36,12 +37,12 @@ export default async function RequestPage({ params }: Props) {
             <p className="text-sm" style={{ color: '#6b4c0a' }}>
               URLが正しくないか、相手が削除された可能性があります。
             </p>
-            <a
+            <Link
               href="/farm"
               className="farm-btn mt-4 inline-flex h-11 items-center justify-center px-6 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
             >
               農園に戻る
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -54,14 +55,14 @@ export default async function RequestPage({ params }: Props) {
     <div className="min-h-screen" style={{ background: '#f5ede0' }}>
       {/* ヘッダー */}
       <header className="farm-header flex items-center gap-3 px-4 py-3">
-        <a
+        <Link
           href="/farm"
           className="h-11 w-11 flex items-center justify-center rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
           style={{ color: '#f5e6a3' }}
           aria-label="農園に戻る"
         >
           ←
-        </a>
+        </Link>
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-bold truncate" style={{ color: '#f5e6a3' }}>
             {data.contact_name}さんへリクエスト

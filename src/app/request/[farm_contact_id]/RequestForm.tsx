@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Candidate } from '@/types/meeting'
 import { getSupabase } from '@/lib/supabase'
@@ -194,13 +195,13 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           {isCopied ? 'コピーしました！' : 'もう一度コピー'}
         </button>
 
-        <a
+        <Link
           href="/farm"
           className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
           style={{ border: '2px solid #c8953a', color: '#4a8c5c', background: '#fef7e4' }}
         >
           農園に戻る
-        </a>
+        </Link>
       </div>
     )
   }
