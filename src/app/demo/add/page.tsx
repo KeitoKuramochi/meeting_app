@@ -132,12 +132,40 @@ export default function DemoAddPage() {
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               キャラクターを選んでください
             </p>
+
+            {/* 選択中プレビュー */}
             {selectedCharacter !== null && (
-              <p className="text-sm text-emerald-700 dark:text-emerald-400 mb-2">
-                キャラクター #{selectedCharacter} を選択中
-              </p>
+              <div className="flex flex-col items-center gap-2 p-4 rounded-xl mb-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-300 dark:border-emerald-700">
+                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">選択中</p>
+                <div
+                  className="rounded-2xl overflow-hidden flex items-center justify-center bg-white/60"
+                  style={{ width: 160, height: 160, border: '3px solid #4a8c5c' }}
+                >
+                  <img
+                    src={`/images/processed_${selectedCharacter}.png`}
+                    alt={`キャラクター ${selectedCharacter}`}
+                    width={160}
+                    height={160}
+                    className="w-full h-full object-contain"
+                    draggable={false}
+                  />
+                </div>
+                <p className="text-xl font-extrabold text-emerald-800 dark:text-emerald-300">
+                  キャラ #{selectedCharacter}
+                </p>
+                {contactName.trim() && (
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                    {contactName.trim()} の担当キャラ
+                  </p>
+                )}
+              </div>
             )}
-            <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-3 max-h-96 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-800">
+
+            {/* キャラグリッド */}
+            <div
+              className="grid gap-1.5 max-h-72 overflow-y-auto rounded-xl p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))' }}
+            >
               {characterNumbers.map((num) => {
                 const isSelected = selectedCharacter === num
                 return (
@@ -149,8 +177,8 @@ export default function DemoAddPage() {
                       setCharacterError('')
                     }}
                     className={[
-                      'flex flex-col items-center justify-center rounded-lg p-2 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400',
-                      'min-h-[44px]',
+                      'flex flex-col items-center justify-center rounded-lg p-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400',
+                      'min-h-[88px]',
                       isSelected
                         ? 'ring-2 ring-emerald-500 bg-emerald-100 dark:bg-emerald-900/50 scale-105'
                         : 'hover:bg-gray-100 dark:hover:bg-gray-700',
@@ -161,9 +189,11 @@ export default function DemoAddPage() {
                     <img
                       src={`/images/processed_${num}.png`}
                       alt={`キャラクター ${num}`}
-                      width={64}
-                      height={64}
-                      className="w-16 h-16 object-contain"
+                      width={72}
+                      height={72}
+                      className="object-contain"
+                      style={{ width: 72, height: 72 }}
+                      loading="lazy"
                       draggable={false}
                     />
                     <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">{num}</span>
