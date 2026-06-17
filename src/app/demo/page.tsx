@@ -5,6 +5,17 @@ import Link from 'next/link'
 import { FarmContactWithCount } from '@/types/farm'
 import DemoFarmCharacters from './DemoFarmCharacters'
 
+// 成長過程を見せるためのプリセットキャラ（確定0・2・3・5・10回）
+const PRESET_CONTACTS: FarmContactWithCount[] = [
+  { id: 'preset-0',  farm_id: 'demo', contact_name: '山田先生',  character_number: 42, created_at: '', confirmedCount: 0,  pendingCount: 0, repliedCount: 0 },
+  { id: 'preset-2',  farm_id: 'demo', contact_name: '鈴木先生',  character_number: 17, created_at: '', confirmedCount: 2,  pendingCount: 0, repliedCount: 0 },
+  { id: 'preset-3',  farm_id: 'demo', contact_name: '田中先生',  character_number: 68, created_at: '', confirmedCount: 3,  pendingCount: 0, repliedCount: 0 },
+  { id: 'preset-5',  farm_id: 'demo', contact_name: '佐藤先生',  character_number: 33, created_at: '', confirmedCount: 5,  pendingCount: 0, repliedCount: 0 },
+  { id: 'preset-10', farm_id: 'demo', contact_name: '伊藤先生',  character_number: 81, created_at: '', confirmedCount: 10, pendingCount: 0, repliedCount: 0 },
+]
+
+const STORAGE_KEY = 'demo_contacts'
+
 type DemoContact = {
   id: string
   contact_name: string
@@ -12,9 +23,6 @@ type DemoContact = {
   created_at: string
 }
 
-const STORAGE_KEY = 'demo_contacts'
-
-// 型ガード: localStorage から読み込んだ値が DemoContact[] かを検証する
 function isDemoContactArray(value: unknown): value is DemoContact[] {
   if (!Array.isArray(value)) return false
   return value.every(
@@ -40,88 +48,92 @@ function loadDemoContacts(): DemoContact[] {
   }
 }
 
-function toDemoContactWithCount(contact: DemoContact): FarmContactWithCount {
-  return {
-    id: contact.id,
-    // farm_id は FarmContact に必須だが demo では使わないためダミー値を設定
-    farm_id: 'demo',
-    contact_name: contact.contact_name,
-    character_number: contact.character_number,
-    created_at: contact.created_at,
-    confirmedCount: 0,
-    pendingCount: 0,
-    repliedCount: 0,
-  }
-}
-
 export default function DemoPage() {
-  const [contacts, setContacts] = useState<FarmContactWithCount[]>([])
+  const [extraContacts, setExtraContacts] = useState<FarmContactWithCount[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
     const raw = loadDemoContacts()
-    setContacts(raw.map(toDemoContactWithCount))
+    const extras: FarmContactWithCount[] = raw.map(c => ({
+      id: c.id,
+      farm_id: 'demo',
+      contact_name: c.contact_name,
+      character_number: c.character_number,
+      created_at: c.created_at,
+      confirmedCount: 0,
+      pendingCount: 0,
+      repliedCount: 0,
+    }))
+    setExtraContacts(extras)
     setIsLoaded(true)
   }, [])
 
+  const contacts = [...PRESET_CONTACTS, ...extraContacts]
+  const totalConfirmed = PRESET_CONTACTS.reduce((s, c) => s + c.confirmedCount, 0)
+
   return (
-    <div className="min-h-screen bg-emerald-50 dark:bg-gray-950 flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: '#f5ede0' }}>
       {/* ヘッダー */}
-      <header className="flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm">
+      <header className="flex items-center justify-between px-4 py-3 shrink-0 farm-header" style={{ position: 'sticky', top: 0, zIndex: 40 }}>
         <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="h-11 px-3 flex items-center justify-center rounded-xl text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
-          >
-            ← ログインして本格利用
-          </Link>
+          <span className="text-xl" aria-hidden="true">🌾</span>
+          <h1 className="text-base font-extrabold" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+            のうえんミーティング
+          </h1>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded-full">
+          <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: '#fef3c7', color: '#92400e' }}>
             デモ
           </span>
           <Link
-            href="/demo/add"
-            className="h-11 px-4 flex items-center justify-center rounded-xl bg-emerald-600 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors"
+            href="/"
+            className="farm-btn-gold h-9 px-3 flex items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
-            キャラを追加
+            ログイン
           </Link>
         </div>
       </header>
 
       {/* 農園エリア */}
-      <main className="flex-1 p-4">
+      <main className="flex-1 p-3 flex flex-col gap-2">
         <div
-          className="relative w-full rounded-2xl overflow-hidden shadow-lg"
-          style={{ minHeight: '60vh' }}
+          className="flex items-center justify-between px-4 py-2 rounded-xl text-xs font-semibold"
+          style={{ background: '#fef7e4', border: '1.5px solid #d4a853', color: '#6b4c0a' }}
         >
-          {/* 農園背景画像 */}
+          <span>🐾 {contacts.length}人が農園にいます</span>
+          <span>✅ 合計{totalConfirmed}回確定（デモ）</span>
+        </div>
+
+        <div
+          className="relative w-full rounded-2xl overflow-hidden flex-1"
+          style={{
+            minHeight: '62vh',
+            border: '3px solid #7c5c3a',
+            boxShadow: '0 4px 20px rgba(107,68,35,0.3)',
+          }}
+        >
           <img
             src="/images/nouen.png"
             alt="農園"
             className="absolute inset-0 w-full h-full object-cover"
             draggable={false}
           />
-
-          {/* キャラクター表示 */}
           <div className="absolute inset-0">
             {isLoaded && <DemoFarmCharacters contacts={contacts} />}
           </div>
         </div>
 
-        {/* キャラ数の表示 */}
-        {contacts.length > 0 && (
-          <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
-            {contacts.length} 人が農園にいます
-          </p>
-        )}
+        <p className="text-center text-xs" style={{ color: '#8b6914' }}>
+          キャラをタップしてみよう ✨ 確定回数が多いほど大きく育ちます
+        </p>
 
         {/* デモ説明 */}
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-          <p className="font-semibold mb-1">デモモードについて</p>
-          <ul className="space-y-1 text-amber-700 dark:text-amber-300">
-            <li>・キャラを追加して農園を体験できます</li>
-            <li>・データはこのブラウザにのみ保存されます</li>
+        <div className="rounded-xl px-4 py-3 text-sm" style={{ background: '#fef7e4', border: '1.5px solid #d4a853' }}>
+          <p className="font-semibold mb-1" style={{ color: '#3d2b0e' }}>デモモードについて</p>
+          <ul className="space-y-1" style={{ color: '#6b4c0a' }}>
+            <li>・ミーティングが確定するたびにキャラが成長します</li>
+            <li>・3回以上でキラキラ、4回以上でハートエフェクトが付きます</li>
+            <li>・一番確定回数が多い人に王冠がつきます 👑</li>
             <li>・リクエスト送信・日程調整はログイン後にご利用いただけます</li>
           </ul>
         </div>

@@ -223,23 +223,23 @@ function DemoCharacter({ contact, index, isCrown, onTap }: CharacterProps) {
         />
 
         {isCrown && (
-          <img src="/images/processed_a4.png" alt="王冠" width={24} height={24}
-            className="absolute left-1/2 -translate-x-1/2" style={{ top: -20 }} draggable={false} />
+          <img src="/images/processed_a4.png" alt="王冠" width={40} height={40}
+            className="absolute left-1/2 -translate-x-1/2" style={{ top: -36 }} draggable={false} />
         )}
         {showZzz && (
           <img src="/images/processed_a5.png" alt="ZZZ" width={20} height={20}
             className="absolute" style={{ top: -8, right: -8 }} draggable={false} />
         )}
         {showKira && !showHeart && (
-          <img src="/images/processed_a2.png" alt="キラキラ" width={20} height={20}
-            className="absolute animate-pulse" style={{ top: -8, left: -8 }} draggable={false} />
+          <img src="/images/processed_a2.png" alt="キラキラ" width={80} height={80}
+            className="absolute animate-pulse" style={{ top: 0, left: 0, width: '100%', height: '100%' }} draggable={false} />
         )}
         {showHeart && (
           <img
             src={kiraPhase ? '/images/processed_a2.png' : '/images/processed_a3.png'}
             alt={kiraPhase ? 'キラキラ' : 'ハート'}
-            width={20} height={20}
-            className="absolute" style={{ top: -8, left: -8 }} draggable={false}
+            width={80} height={80}
+            className="absolute" style={{ top: 0, left: 0, width: '100%', height: '100%' }} draggable={false}
           />
         )}
       </div>
