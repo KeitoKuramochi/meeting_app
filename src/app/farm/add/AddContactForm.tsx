@@ -119,6 +119,7 @@ export default function AddContactForm({ farmId }: Props) {
                 width: 160, height: 160,
                 border: '3px solid #4a8c5c',
                 background: 'rgba(255,255,255,0.6)',
+                boxSizing: 'content-box',
               }}
             >
               <img
@@ -146,7 +147,7 @@ export default function AddContactForm({ farmId }: Props) {
         <div
           className="grid gap-1.5 max-h-72 overflow-y-auto rounded-xl p-2"
           style={{
-            gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
             background: '#fffdf7',
             border: '1.5px solid #d4a853',
           }}
@@ -176,7 +177,7 @@ export default function AddContactForm({ farmId }: Props) {
                   width={72}
                   height={72}
                   className="object-contain pixel-char"
-                  style={{ width: 72, height: 72 }}
+                  style={{ width: 72, height: 72, minWidth: 72, minHeight: 72 }}
                   loading="lazy"
                   draggable={false}
                 />
