@@ -772,15 +772,15 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
               className="absolute" style={{ top: -8, right: -8 }} draggable={false} />
           )}
           {showKira && !showHeart && (
-            <img src="/images/processed_a2.png" alt="キラキラ" width={20} height={20}
-              className="absolute animate-pulse" style={{ top: '8%', right: '8%' }} draggable={false} />
+            <img src="/images/processed_a2.png" alt="キラキラ" width={80} height={80}
+              className="absolute animate-pulse" style={{ top: 0, left: 0, width: '100%', height: '100%' }} draggable={false} />
           )}
           {showHeart && (
             <img
               src={kiraPhase ? '/images/processed_a2.png' : '/images/processed_a3.png'}
               alt={kiraPhase ? 'キラキラ' : 'ハート'}
-              width={20} height={20}
-              className="absolute" style={{ top: '8%', right: '8%' }} draggable={false}
+              width={80} height={80}
+              className="absolute" style={{ top: 0, left: 0, width: '100%', height: '100%' }} draggable={false}
             />
           )}
         </div>
