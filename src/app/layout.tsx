@@ -29,7 +29,7 @@ const zenMaruGothic = Zen_Maru_Gothic({
 });
 
 export const metadata: Metadata = {
-  title: "のうえんミーティング | ミーティングを肥料に、なかまを育てる",
+  title: "農園ミーティング | ミーティングを肥料に、なかまを育てる",
   description: "URLを送るだけの日程調整。ミーティングを重ねるほど、農園のなかまが育っていく",
 };
 

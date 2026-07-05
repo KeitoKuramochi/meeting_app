@@ -22,7 +22,7 @@ export default async function TopPage({ searchParams }: Props) {
         <div className="text-center">
           <div className="text-7xl mb-3" role="img" aria-label="農場">🌾</div>
           <h1 className="font-farm-title text-3xl tracking-tight" style={{ color: '#1a3d12', textShadow: '0 1px 0 rgba(255,255,255,0.5)' }}>
-            のうえん<wbr />ミーティング
+            農園<wbr />ミーティング
           </h1>
           <p className="mt-2 text-sm font-semibold" style={{ color: '#4a7c59' }}>
             ミーティングは、肥料になる。
@@ -77,7 +77,7 @@ export default async function TopPage({ searchParams }: Props) {
       </main>
 
       <footer className="relative z-10 pb-6 text-center text-xs" style={{ color: '#8b6914' }}>
-        &copy; {new Date().getFullYear()} のうえんミーティング
+        &copy; {new Date().getFullYear()} 農園ミーティング
       </footer>
     </div>
   )

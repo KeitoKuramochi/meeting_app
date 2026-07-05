@@ -9,7 +9,7 @@ export default function GuidePage() {
         <div className="flex items-center gap-2">
           <span className="text-xl" aria-hidden="true">🌾</span>
           <span className="font-farm-title text-base" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
-            のうえんミーティング
+            農園ミーティング
           </span>
         </div>
         <a
@@ -24,7 +24,7 @@ export default function GuidePage() {
         {/* Hero */}
         <section className="text-center pt-2">
           <h1 className="font-farm-title text-2xl mb-3" style={{ color: '#2c1a0e' }}>
-            のうえんミーティングの使い方
+            農園ミーティングの使い方
           </h1>
           <p className="text-sm font-medium" style={{ color: '#8b6914' }}>
             ミーティングという名の肥料で、なかまを育てよう。
@@ -327,7 +327,7 @@ export default function GuidePage() {
       </main>
 
       <footer className="py-6 text-center text-xs" style={{ color: '#8b6914' }}>
-        &copy; {new Date().getFullYear()} のうえんミーティング
+        &copy; {new Date().getFullYear()} 農園ミーティング
       </footer>
     </div>
   )

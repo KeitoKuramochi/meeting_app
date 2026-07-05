@@ -79,7 +79,7 @@ export default function DemoPage() {
         <div className="flex items-center gap-2">
           <span className="text-xl" aria-hidden="true">🌾</span>
           <h1 className="font-farm-title text-base" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
-            のうえんミーティング
+            農園ミーティング
           </h1>
         </div>
         <div className="flex items-center gap-2">
