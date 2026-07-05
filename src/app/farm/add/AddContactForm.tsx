@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
+import { getCharacterName } from '@/data/characterNames'
 
 type Props = {
   farmId: string
@@ -13,6 +14,7 @@ const TOTAL_CHARACTERS = 100
 export default function AddContactForm({ farmId }: Props) {
   const router = useRouter()
   const [contactName, setContactName] = useState('')
+  const [isNameAutoFilled, setIsNameAutoFilled] = useState(false)
   const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null)
   const [nameError, setNameError] = useState('')
   const [characterError, setCharacterError] = useState('')
@@ -20,6 +22,16 @@ export default function AddContactForm({ farmId }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const characterNumbers = Array.from({ length: TOTAL_CHARACTERS }, (_, i) => i + 1)
+
+  function handleSelectCharacter(num: number) {
+    setSelectedCharacter(num)
+    setCharacterError('')
+    if (contactName.trim() === '' || isNameAutoFilled) {
+      setContactName(getCharacterName(num))
+      setIsNameAutoFilled(true)
+      setNameError('')
+    }
+  }
 
   function validate(): boolean {
     let valid = true
@@ -83,10 +95,21 @@ export default function AddContactForm({ farmId }: Props) {
           id="contact-name"
           type="text"
           value={contactName}
-          onChange={(e) => setContactName(e.target.value)}
+          onChange={(e) => {
+            setContactName(e.target.value)
+            setIsNameAutoFilled(false)
+          }}
+          onFocus={(e) => {
+            if (isNameAutoFilled) e.target.select()
+          }}
           placeholder="例：田中さん、田中教授"
           className="w-full h-12 rounded-xl px-4 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400"
-          style={{ border: '2px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
+          style={{
+            border: '2px solid #c8953a',
+            background: '#fffdf7',
+            color: isNameAutoFilled ? '#b8a888' : '#2c1a0e',
+            fontStyle: isNameAutoFilled ? 'italic' : 'normal',
+          }}
           autoComplete="off"
         />
         {nameError && (
@@ -133,7 +156,7 @@ export default function AddContactForm({ farmId }: Props) {
               />
             </div>
             <p className="text-xl font-extrabold" style={{ color: '#2a5c1e' }}>
-              キャラ #{selectedCharacter}
+              {getCharacterName(selectedCharacter)}
             </p>
             {contactName.trim() && (
               <p className="text-sm" style={{ color: '#4a8c5c' }}>
@@ -154,26 +177,25 @@ export default function AddContactForm({ farmId }: Props) {
         >
           {characterNumbers.map((num) => {
             const isSelected = selectedCharacter === num
+            const name = getCharacterName(num)
             return (
               <button
                 key={num}
                 type="button"
-                onClick={() => {
-                  setSelectedCharacter(num)
-                  setCharacterError('')
-                }}
-                className="flex flex-col items-center justify-center rounded-lg p-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400 min-h-[88px]"
+                onClick={() => handleSelectCharacter(num)}
+                className="flex flex-col items-center justify-center rounded-lg p-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400 min-h-[100px]"
                 style={{
                   background: isSelected ? 'rgba(42,92,30,0.15)' : 'transparent',
                   border: isSelected ? '2px solid #4a8c5c' : '2px solid transparent',
                   transform: isSelected ? 'scale(1.08)' : 'scale(1)',
                 }}
-                aria-label={'キャラクター ' + num}
+                aria-label={name}
                 aria-pressed={isSelected}
+                title={name}
               >
                 <img
                   src={'/images/processed_' + num + '.png'}
-                  alt={'キャラクター ' + num}
+                  alt={name}
                   width={72}
                   height={72}
                   className="object-contain pixel-char"
@@ -181,6 +203,12 @@ export default function AddContactForm({ farmId }: Props) {
                   loading="lazy"
                   draggable={false}
                 />
+                <span
+                  className="w-full mt-1 text-[10px] leading-tight text-center truncate"
+                  style={{ color: '#8b6914' }}
+                >
+                  {name}
+                </span>
               </button>
             )
           })}

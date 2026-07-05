@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, type RefObject } from 'react'
 import { useRouter } from 'next/navigation'
 import { FarmContactWithCount } from '@/types/farm'
 import { getSupabase } from '@/lib/supabase'
@@ -114,9 +114,10 @@ type CharacterProps = {
   onDraftCleared?: (contactId: string) => void
   requestedOpen?: boolean
   onModalOpened?: () => void
+  positionsRef: RefObject<({ x: number; y: number } | null)[]>
 }
 
-function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingCount, index, isCrown, onManualConfirmed, onDraftCleared, requestedOpen, onModalOpened }: CharacterProps) {
+function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingCount, index, isCrown, onManualConfirmed, onDraftCleared, requestedOpen, onModalOpened, positionsRef }: CharacterProps) {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
@@ -208,13 +209,38 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
       // タップ後5秒間はスピードを1/10に落としてタップしやすくする
       const tapSlowMult = Date.now() < slowdownUntilRef.current ? 0.1 : 1.0
 
+      // 他キャラとの距離が近すぎる場合は穏やかに反発させ、重なりを防ぐ
+      const others = positionsRef.current
+      for (let i = 0; i < others.length; i++) {
+        if (i === index) continue
+        const other = others[i]
+        if (!other) continue
+        const dx = s.x - other.x
+        const dy = (s.y - other.y) * 2.5
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const minDist = 22
+        if (dist > 0.0001 && dist < minDist) {
+          const push = ((minDist - dist) / minDist) * 0.28
+          s.vx += (dx / dist) * push
+          s.vy += (dy / dist) * push * 0.35
+        }
+      }
+
       s.x += s.vx * sf * tapSlowMult
       s.y += s.vy * sf * tapSlowMult
 
-      if (s.x < 8)  { s.x = 8;  s.vx =  Math.abs(s.vx) }
-      if (s.x > 92) { s.x = 92; s.vx = -Math.abs(s.vx) }
-      if (s.y < 3)  { s.y = 3;  s.vy =  Math.abs(s.vy) }
-      if (s.y > 72) { s.y = 72; s.vy = -Math.abs(s.vy) }
+      // 実際のキャラ表示サイズ（名前ラベル込み）を元に、農園の表示領域からはみ出さない
+      // 動的マージンを算出する（translateX(-50%) で中央基準に配置しているため）
+      const ch = parentEl?.offsetHeight ?? 1
+      const myW = el?.offsetWidth ?? 0
+      const myH = el?.offsetHeight ?? 0
+      const marginX = Math.min(45, (myW / 2 / cw) * 100)
+      const marginYTop = Math.min(90, (myH / ch) * 100)
+
+      if (s.x < marginX)       { s.x = marginX;       s.vx =  Math.abs(s.vx) }
+      if (s.x > 100 - marginX) { s.x = 100 - marginX; s.vx = -Math.abs(s.vx) }
+      if (s.y < 3)                  { s.y = 3;                  s.vy =  Math.abs(s.vy) }
+      if (s.y > 100 - marginYTop)   { s.y = 100 - marginYTop;   s.vy = -Math.abs(s.vy) }
 
       s.timer--
       if (s.timer <= 0) {
@@ -223,6 +249,8 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
         s.vy = Math.sin(a) * baseSpeed * 0.35
         s.timer = Math.floor(60 + Math.random() * 120)
       }
+
+      others[index] = { x: s.x, y: s.y }
 
       if (el) { el.style.left = `${s.x}%`; el.style.bottom = `${s.y}%` }
       if (img) img.style.transform = s.vx < 0 ? 'scaleX(-1)' : 'scaleX(1)'
@@ -254,8 +282,10 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
       const parent = el?.parentElement
       if (!el || !parent) return
       const rect = parent.getBoundingClientRect()
-      const x = Math.max(8, Math.min(92, ((clientX - rect.left) / rect.width) * 100))
-      const y = Math.max(3, Math.min(72, ((rect.bottom - clientY) / rect.height) * 100))
+      const marginX = Math.min(45, (el.offsetWidth / 2 / rect.width) * 100)
+      const marginYTop = Math.min(90, (el.offsetHeight / rect.height) * 100)
+      const x = Math.max(marginX, Math.min(100 - marginX, ((clientX - rect.left) / rect.width) * 100))
+      const y = Math.max(3, Math.min(100 - marginYTop, ((rect.bottom - clientY) / rect.height) * 100))
       stateRef.current.x = x
       stateRef.current.y = y
       el.style.left = `${x}%`
@@ -809,6 +839,7 @@ type Props = {
 }
 
 export default function FarmCharacters({ contacts, openModalContactId, onModalOpened, onDraftCleared }: Props) {
+  const positionsRef = useRef<({ x: number; y: number } | null)[]>([])
   const initCounts = useCallback(() => {
     const replied: Record<string, number> = {}
     const confirmed: Record<string, number> = {}
@@ -935,6 +966,7 @@ export default function FarmCharacters({ contacts, openModalContactId, onModalOp
           onDraftCleared={onDraftCleared}
           requestedOpen={openModalContactId === contact.id}
           onModalOpened={onModalOpened}
+          positionsRef={positionsRef}
         />
       ))}
     </>

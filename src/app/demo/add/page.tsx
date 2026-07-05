@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { getCharacterName } from '@/data/characterNames'
 
 type DemoContact = {
   id: string
@@ -35,12 +36,23 @@ function saveDemoContacts(contacts: DemoContact[]): void {
 export default function DemoAddPage() {
   const router = useRouter()
   const [contactName, setContactName] = useState('')
+  const [isNameAutoFilled, setIsNameAutoFilled] = useState(false)
   const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null)
   const [nameError, setNameError] = useState('')
   const [characterError, setCharacterError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const characterNumbers = Array.from({ length: TOTAL_CHARACTERS }, (_, i) => i + 1)
+
+  function handleSelectCharacter(num: number) {
+    setSelectedCharacter(num)
+    setCharacterError('')
+    if (contactName.trim() === '' || isNameAutoFilled) {
+      setContactName(getCharacterName(num))
+      setIsNameAutoFilled(true)
+      setNameError('')
+    }
+  }
 
   function validate(): boolean {
     let valid = true
@@ -115,9 +127,20 @@ export default function DemoAddPage() {
               id="contact-name"
               type="text"
               value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
+              onChange={(e) => {
+                setContactName(e.target.value)
+                setIsNameAutoFilled(false)
+              }}
+              onFocus={(e) => {
+                if (isNameAutoFilled) e.target.select()
+              }}
               placeholder="例：田中さん、田中教授"
-              className="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 h-12 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
+              className={[
+                'w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 h-12 text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500',
+                isNameAutoFilled
+                  ? 'text-gray-400 dark:text-gray-500 italic'
+                  : 'text-gray-900 dark:text-gray-100',
+              ].join(' ')}
               autoComplete="off"
             />
             {nameError && (
@@ -151,7 +174,7 @@ export default function DemoAddPage() {
                   />
                 </div>
                 <p className="text-xl font-extrabold text-emerald-800 dark:text-emerald-300">
-                  キャラ #{selectedCharacter}
+                  {getCharacterName(selectedCharacter)}
                 </p>
                 {contactName.trim() && (
                   <p className="text-sm text-emerald-600 dark:text-emerald-400">
@@ -168,27 +191,26 @@ export default function DemoAddPage() {
             >
               {characterNumbers.map((num) => {
                 const isSelected = selectedCharacter === num
+                const name = getCharacterName(num)
                 return (
                   <button
                     key={num}
                     type="button"
-                    onClick={() => {
-                      setSelectedCharacter(num)
-                      setCharacterError('')
-                    }}
+                    onClick={() => handleSelectCharacter(num)}
                     className={[
                       'flex flex-col items-center justify-center rounded-lg p-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400',
-                      'min-h-[88px]',
+                      'min-h-[100px]',
                       isSelected
                         ? 'ring-2 ring-emerald-500 bg-emerald-100 dark:bg-emerald-900/50 scale-105'
                         : 'hover:bg-gray-100 dark:hover:bg-gray-700',
                     ].join(' ')}
-                    aria-label={`キャラクター ${num}`}
+                    aria-label={name}
                     aria-pressed={isSelected}
+                    title={name}
                   >
                     <img
                       src={`/images/processed_${num}.png`}
-                      alt={`キャラクター ${num}`}
+                      alt={name}
                       width={72}
                       height={72}
                       className="object-contain"
@@ -196,7 +218,9 @@ export default function DemoAddPage() {
                       loading="lazy"
                       draggable={false}
                     />
-                    <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">{num}</span>
+                    <span className="w-full text-[10px] leading-tight text-center truncate text-gray-500 dark:text-gray-400 mt-1">
+                      {name}
+                    </span>
                   </button>
                 )
               })}

@@ -141,7 +141,7 @@ export default function FarmClientShell({ contacts }: Props) {
           }}
         >
           <Image
-            src="/images/nouen.png"
+            src="/images/nouen.webp"
             alt="農園"
             fill
             className="object-cover"

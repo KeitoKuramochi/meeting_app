@@ -12,6 +12,8 @@ type Props = {
   confirmedIndex: number | null
   initialDurationMinutes?: number | null
   initialNote?: string | null
+  initialAlternativeCandidates?: Candidate[] | null
+  initialRepliedAt?: string | null
 }
 
 // 30分刻みの時間選択肢 (06:00〜22:00)
@@ -127,6 +129,8 @@ export default function CandidateList({
   confirmedIndex,
   initialDurationMinutes,
   initialNote,
+  initialAlternativeCandidates,
+  initialRepliedAt,
 }: Props) {
   const router = useRouter()
 
@@ -153,7 +157,12 @@ export default function CandidateList({
   const [altNote, setAltNote] = useState<string>('')
   const [isAltSubmitting, setIsAltSubmitting] = useState<boolean>(false)
   const [altErrorMessage, setAltErrorMessage] = useState<string>('')
-  const [altSubmitted, setAltSubmitted] = useState<boolean>(false)
+  const [altSubmitted, setAltSubmitted] = useState<boolean>(
+    Boolean(initialRepliedAt) && !initialIsConfirmed
+  )
+  const [sentAltCandidates, setSentAltCandidates] = useState<Candidate[]>(
+    initialAlternativeCandidates ?? []
+  )
 
   function addAltCandidate() {
     if (altCandidates.length < 5) {
@@ -324,6 +333,7 @@ export default function CandidateList({
         }
       }
 
+      setSentAltCandidates(filledAlt)
       setAltSubmitted(true)
     } catch {
       setAltErrorMessage('送信に失敗しました。もう一度お試しください。')
@@ -571,6 +581,15 @@ export default function CandidateList({
           <p className="mt-1 text-sm text-blue-700">
             別日の提案が送信されました。相手の返答をお待ちください。
           </p>
+          {sentAltCandidates.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {sentAltCandidates.map((c, i) => (
+                <li key={i} className="text-sm text-blue-800">
+                  ・{formatCandidate(c)}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>

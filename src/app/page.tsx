@@ -14,7 +14,7 @@ export default async function TopPage({ searchParams }: Props) {
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden" style={{ background: '#f5ede0' }}>
       {/* Farm background */}
       <div className="absolute inset-0 pointer-events-none select-none opacity-30">
-        <Image src="/images/nouen.png" alt="" fill className="object-cover object-bottom" priority sizes="100vw" />
+        <Image src="/images/nouen.webp" alt="" fill className="object-cover object-bottom" priority sizes="100vw" />
       </div>
 
       <main className="relative z-10 w-full max-w-sm px-4 py-10 flex flex-col items-center gap-7">

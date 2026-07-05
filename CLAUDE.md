@@ -16,7 +16,7 @@
 | エージェント | 役割 | 主要ツール・プラグイン |
 |---|---|---|
 | Planner | idea.md を仕様・TASKに展開する（セキュリティ要件も定義） | context7 MCP, /revise-claude-md |
-| Generator | TASKを1つずつ実装・build・commit する | /feature-dev, /commit, /code-review, context7 MCP, security-guidance（自動）, typescript-lsp（自動）, frontend-design（自動） |
+| Generator | TASKを1つずつ実装・build・commit する | /feature-dev, /commit, /code-review, context7 MCP, Playwright MCP（UI変更時の自己確認）, security-guidance（自動）, typescript-lsp（自動）, frontend-design（自動） |
 | Security Auditor | commit後にセキュリティレビューを行う | /security-review, security-guidance |
 | Evaluator | Playwright MCPで実際に操作・パフォーマンスを評価する | Playwright MCP, /web-perf, /verify |
 
@@ -67,6 +67,7 @@ Planner: /revise-claude-md で CLAUDE.md を更新
 
 ## 絶対ルール（全エージェント共通）
 
+- セッション終了時は必ず `docs/STATUS.md` の「セッション履歴」セクションに要約を追記する（コード変更を伴わない対話セッションでも省略しない。詳細は下記「セッション終了時のルール」参照）
 - `.env`, `.env.local`, `secret`, `API key` には絶対に触れない・作らない・変更しない
 - `git push` は人間の許可なしに行わない（push 先: https://github.com/KeitoKuramochi/meeting_app）
 - Vercel へのデプロイは人間が手動で行う（Claude Code は実行しない）
@@ -74,6 +75,18 @@ Planner: /revise-claude-md で CLAUDE.md を更新
 - DB 導入が必要になったら停止して人間に相談する
 - 認証実装が必要になったら停止して人間に相談する
 - 危険・不可逆な操作は必ず人間に確認してから行う
+
+---
+
+## セッション終了時のルール（全セッション共通）
+
+**目的**: 過去のセッションの記憶がなくても、`docs/STATUS.md` の「セッション履歴」セクションだけを読めば「これまで何があったか・今どういう状態か・次に何をすべきか」が分かる状態を常に保つ。
+
+- 対象は Planner / Generator / Security Auditor / Evaluator に限らず、人間との対話セッション（質問応答・調査・雑談的なやり取りも含む）すべて
+- コードやドキュメントの変更を伴わないセッションでも、会話が一区切りついたら追記する（「何もしなかった」場合はその旨と理由を書けばよい）
+- 追記先は `docs/STATUS.md` の「セッション履歴（新しい順）」セクション。新しいエントリは常に先頭に追加する
+- フォーマット: `### YYYY-MM-DD セッション種別 — 一言タイトル` の見出し＋箇条書き（やったこと／分かったこと／次にやること）
+- 既存の「TASK進捗」「ブロッカー」「Evaluatorの評価履歴」など他のセクションと役割が重複しても構わない。セッション履歴は横断的な要約であり、他のセクションは各観点の詳細記録
 
 ---
 
@@ -89,6 +102,7 @@ Planner: /revise-claude-md で CLAUDE.md を更新
 
 - 1 回に 1 TASK だけ実装する
 - `npm run build` を実行し、通ることを確認してから commit する
+- UI・見た目・操作に関わる変更をした場合は、commit前に Playwright MCP で実際にブラウザを操作して確認する。curlでHTMLを見ただけ・コードを読んだだけの状態を「確認済み」と報告しない。確認できなかった場合は「未確認」と正直に書く
 - build エラーは `docs/ERROR_FIX_LOOP.md` に従い最大3回まで修正する
 - 3 回修正しても直らなければ停止して人間に相談する
 - `any` は使わない

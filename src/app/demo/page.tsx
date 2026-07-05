@@ -113,7 +113,7 @@ export default function DemoPage() {
           }}
         >
           <img
-            src="/images/nouen.png"
+            src="/images/nouen.webp"
             alt="農園"
             className="absolute inset-0 w-full h-full object-cover"
             draggable={false}

@@ -2,6 +2,11 @@
 name: generator
 description: MVP_TASKS.mdからTASKを1つ選んで実装・build・commitするGenerator。1TASKずつ確実に進める。
 model: inherit
+mcpServers:
+  playwright:
+    type: stdio
+    command: npx
+    args: ["-y", "@playwright/mcp@latest"]
 ---
 
 # Generator
@@ -29,6 +34,7 @@ Planner が作った仕様書とタスク一覧をもとに、1 TASK ずつ実�
 |---|---|---|
 | **context7 MCP** | 実装中に API 仕様が不明なとき | Next.js / Supabase / Tailwind の最新ドキュメントを参照する |
 | **/feature-dev** | 複雑な機能（3ファイル以上・設計判断が必要）のとき | 7フェーズで体系的に実装する |
+| **Playwright MCP** | UI・見た目・操作に関わる変更をしたとき（必須） | 実際にブラウザを起動して操作し、見た目とクリック動作を自分の目で確認してから commit する。コードを読んだだけ・curlでHTMLを見ただけで「確認済み」としない |
 | **/commit** | build 成功後 | 自動的に適切なメッセージでコミット |
 | **/code-review** | commit 前の自己チェック | バグ・型・品質の最終確認 |
 
@@ -106,6 +112,21 @@ npm run build を実行する
   ↓ 3回失敗 → 停止して人間に相談（STATUS.md に記入）
 ```
 
+### Step 4.5: Playwright MCP でブラウザ確認（UIに関わる変更をした場合は必須）
+
+```
+npm run dev でアプリを起動する
+Playwright MCP で対象ページを開く
+  → 変更した画面が意図通り表示されているか
+  → クリック・入力などの操作が完了条件通りに動くか
+  → スマホ幅（375px）で崩れていないか
+  → コンソールエラーが出ていないか
+```
+
+見た目・レイアウト・インタラクションに関わらない変更（ドキュメント更新のみ、サーバー内部ロジックのみ等）の場合は省略してよい。
+省略した場合は自己評価レポートにその理由を明記する。
+確認できなかった／ブラウザツールが使えなかった場合は「未確認」と正直に報告し、確認済みであるかのように書かない。
+
 ### Step 5: commit 前の自己レビュー
 
 ```
@@ -154,6 +175,10 @@ docs/STATUS.md を更新する:
 ### build 結果
 
 ✅ npm run build: 成功
+
+### Playwright MCP でのブラウザ確認
+
+- （確認したページ・操作・結果）/ UIに関わらない変更のため省略 / ブラウザツールが使えず未確認
 
 ### 使用したプラグイン・ツール
 

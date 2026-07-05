@@ -115,6 +115,8 @@ export default async function ReviewPage({ params }: Props) {
               confirmedIndex={meeting.confirmed_index}
               initialDurationMinutes={meeting.duration_minutes}
               initialNote={meeting.note}
+              initialAlternativeCandidates={meeting.alternative_candidates}
+              initialRepliedAt={meeting.replied_at}
             />
           )}
         </div>
