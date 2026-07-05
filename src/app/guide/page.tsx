@@ -244,11 +244,11 @@ export default function GuidePage() {
             >
               5
             </span>
-            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>ミーティングが確定するとキャラが成長する</h2>
+            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>ミーティング後に要約を記録するとキャラが成長する</h2>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: '#3d2b0e' }}>
-            確定するたびにキャラクターがどんどん大きく育ちます。
-            たくさん会うほど農園が賑やかになっていきます！
+            ミーティングが終わったら要約を記録しましょう。
+            提出するたびにキャラクターがどんどん大きく育ちます。
           </p>
           <div className="flex items-end justify-center gap-8 py-4">
             {/* 小 */}

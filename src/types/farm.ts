@@ -14,9 +14,10 @@ export type FarmContact = {
   created_at: string
 }
 
-// FarmCharacters に渡す、確定回数・確定待ち件数・返信あり件数を含む拡張型
+// FarmCharacters に渡す、確定回数・確定待ち件数・返信あり件数・要約提出回数を含む拡張型
 export type FarmContactWithCount = FarmContact & {
   confirmedCount: number
   pendingCount: number
   repliedCount: number
+  summaryCount: number
 }

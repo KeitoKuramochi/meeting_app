@@ -64,6 +64,7 @@ async function FarmData({ farm }: { farm: Farm }) {
   let confirmedCounts: ConfirmedCountRow[] = []
   let pendingCounts: ConfirmedCountRow[] = []
   let repliedCounts: ConfirmedCountRow[] = []
+  let summaryCounts: ConfirmedCountRow[] = []
 
   if (farmContacts.length > 0) {
     const contactIds = farmContacts.map((c) => c.id)
@@ -71,7 +72,7 @@ async function FarmData({ farm }: { farm: Farm }) {
     // リクエストページで動作が確認済み。認証済みクライアントでは読めないケースがある
     const anonSupabase = getSupabase()
 
-    const [{ data: confirmedData }, { data: pendingData }, { data: repliedData }] = await Promise.all([
+    const [{ data: confirmedData }, { data: pendingData }, { data: repliedData }, { data: summaryData }] = await Promise.all([
       anonSupabase
         .from('meetings')
         .select('farm_contact_id')
@@ -83,6 +84,7 @@ async function FarmData({ farm }: { farm: Farm }) {
         .select('farm_contact_id')
         .in('farm_contact_id', contactIds)
         .is('confirmed_index', null)
+        .or('manually_confirmed.is.null,manually_confirmed.eq.false')
         .returns<{ farm_contact_id: string }[]>(),
       // replied かつ未確定のものだけをカウント（確定済みには返信バッジを出さない）
       anonSupabase
@@ -92,6 +94,13 @@ async function FarmData({ farm }: { farm: Farm }) {
         .not('replied_at', 'is', null)
         .is('confirmed_index', null)
         .or('manually_confirmed.is.null,manually_confirmed.eq.false')
+        .returns<{ farm_contact_id: string }[]>(),
+      // 要約提出済み（キャラクターの成長トリガー）
+      anonSupabase
+        .from('meetings')
+        .select('farm_contact_id')
+        .in('farm_contact_id', contactIds)
+        .not('summary_submitted_at', 'is', null)
         .returns<{ farm_contact_id: string }[]>(),
     ])
 
@@ -108,6 +117,7 @@ async function FarmData({ farm }: { farm: Farm }) {
     confirmedCounts = toCountRows(confirmedData)
     pendingCounts = toCountRows(pendingData)
     repliedCounts = toCountRows(repliedData)
+    summaryCounts = toCountRows(summaryData)
   }
 
   const farmContactsWithCount: FarmContactWithCount[] = farmContacts.map((c) => ({
@@ -115,6 +125,7 @@ async function FarmData({ farm }: { farm: Farm }) {
     confirmedCount: confirmedCounts.find((r) => r.farm_contact_id === c.id)?.count ?? 0,
     pendingCount: pendingCounts.find((r) => r.farm_contact_id === c.id)?.count ?? 0,
     repliedCount: repliedCounts.find((r) => r.farm_contact_id === c.id)?.count ?? 0,
+    summaryCount: summaryCounts.find((r) => r.farm_contact_id === c.id)?.count ?? 0,
   }))
 
   return <FarmClientShell contacts={farmContactsWithCount} />

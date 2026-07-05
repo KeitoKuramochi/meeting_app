@@ -1,11 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import FarmCharacters from './FarmCharacters'
 import LogoutButton from './LogoutButton'
 import type { FarmContactWithCount } from '@/types/farm'
+import { getSupabase } from '@/lib/supabase'
+
+// Supabase から取得する meetings の部分型（ポーリング用）
+type MeetingReplyRow = {
+  farm_contact_id: string
+  replied_at: string | null
+  confirmed_index: number | null
+  manually_confirmed: boolean | null
+  summary_submitted_at: string | null
+}
 
 type Props = {
   contacts: FarmContactWithCount[]
@@ -13,13 +23,16 @@ type Props = {
 
 type ContactItemProps = {
   contact: FarmContactWithCount
+  repliedCount: number
+  confirmedCount: number
+  pendingCount: number
   hasDraft: boolean
   onOpen: (contactId: string) => void
 }
 
-function ContactListItem({ contact, hasDraft, onOpen }: ContactItemProps) {
-  const hasReply = contact.repliedCount > 0
-  const hasPending = contact.pendingCount > 0
+function ContactListItem({ contact, repliedCount, confirmedCount, pendingCount, hasDraft, onOpen }: ContactItemProps) {
+  const hasReply = repliedCount > 0
+  const hasPending = pendingCount > 0
   const borderColor = hasReply ? '#3b82f6' : hasDraft ? '#d97706' : hasPending ? '#d97706' : '#c8953a'
   const statusColor = hasReply ? '#1d4ed8' : hasDraft ? '#9a3412' : hasPending ? '#92400e' : '#6b4c0a'
   const statusText = hasReply
@@ -28,7 +41,7 @@ function ContactListItem({ contact, hasDraft, onOpen }: ContactItemProps) {
     ? '📋 未送信（URLをまだ送っていません）'
     : hasPending
     ? '⏳ 確定待ち'
-    : '✅ ' + contact.confirmedCount + '回確定'
+    : '✅ ' + confirmedCount + '回確定'
 
   return (
     <button
@@ -72,8 +85,128 @@ export default function FarmClientShell({ contacts }: Props) {
     setDraftContactIds(ids)
   }, [contacts])
 
-  const totalConfirmed = contacts.reduce((sum, c) => sum + c.confirmedCount, 0)
-  const alertCount = contacts.filter(c => c.repliedCount > 0).length
+  // 確定・確定待ち・返信ありの件数はここでライブ管理する（「なかま一覧」ドロワーと
+  // 農園内のキャラクター表示の両方が同じ最新データを参照するようにするため。
+  // 以前はキャラクター側だけがポーリングしていて、一覧側はページ読み込み時の
+  // 古いスナップショットのままになり、表示がずれるバグがあった）
+  const initCounts = useCallback(() => {
+    const replied: Record<string, number> = {}
+    const confirmed: Record<string, number> = {}
+    const pending: Record<string, number> = {}
+    const summary: Record<string, number> = {}
+    for (const c of contacts) {
+      replied[c.id] = c.repliedCount
+      confirmed[c.id] = c.confirmedCount
+      pending[c.id] = c.pendingCount
+      summary[c.id] = c.summaryCount
+    }
+    return { replied, confirmed, pending, summary }
+  }, [contacts])
+
+  const [liveRepliedCounts, setLiveRepliedCounts] = useState<Record<string, number>>(
+    () => initCounts().replied
+  )
+  const [liveConfirmedCounts, setLiveConfirmedCounts] = useState<Record<string, number>>(
+    () => initCounts().confirmed
+  )
+  const [livePendingCounts, setLivePendingCounts] = useState<Record<string, number>>(
+    () => initCounts().pending
+  )
+  const [liveSummaryCounts, setLiveSummaryCounts] = useState<Record<string, number>>(
+    () => initCounts().summary
+  )
+
+  // ポーリング用 fetchCounts を ref に保持（visibilitychange から呼べるようにする）
+  const fetchCountsRef = useRef<() => Promise<void>>(async () => { /* init */ })
+
+  useEffect(() => {
+    if (contacts.length === 0) return
+
+    const contactIds = contacts.map(c => c.id)
+
+    const fetchCounts = async () => {
+      try {
+        const supabase = getSupabase()
+        const { data, error } = await supabase
+          .from('meetings')
+          .select('farm_contact_id, replied_at, confirmed_index, manually_confirmed, summary_submitted_at')
+          .in('farm_contact_id', contactIds)
+
+        // エラー・null・空配列の場合はリセットせず現状維持
+        if (error || !data || data.length === 0) return
+
+        const repliedMap: Record<string, number> = {}
+        const confirmedMap: Record<string, number> = {}
+        const pendingMap: Record<string, number> = {}
+        const summaryMap: Record<string, number> = {}
+        for (const id of contactIds) {
+          repliedMap[id] = 0
+          confirmedMap[id] = 0
+          pendingMap[id] = 0
+          summaryMap[id] = 0
+        }
+        for (const row of data as MeetingReplyRow[]) {
+          const cid = row.farm_contact_id
+          if (!(cid in repliedMap)) continue
+          const isConfirmedRow = row.confirmed_index !== null || row.manually_confirmed === true
+          // 確定済み
+          if (isConfirmedRow) {
+            confirmedMap[cid] = (confirmedMap[cid] ?? 0) + 1
+          } else {
+            // 未確定 → 確定待ちカウント
+            pendingMap[cid] = (pendingMap[cid] ?? 0) + 1
+            // 未確定 かつ 返信あり
+            if (row.replied_at !== null) {
+              repliedMap[cid] = (repliedMap[cid] ?? 0) + 1
+            }
+          }
+          // 要約提出済み（確定状態とは無関係にキャラクターの成長カウントとして数える）
+          if (row.summary_submitted_at !== null) {
+            summaryMap[cid] = (summaryMap[cid] ?? 0) + 1
+          }
+        }
+        setLiveRepliedCounts(repliedMap)
+        setLiveConfirmedCounts(confirmedMap)
+        setLivePendingCounts(pendingMap)
+        setLiveSummaryCounts(summaryMap)
+      } catch {
+        // ポーリングエラーは無視する
+      }
+    }
+
+    fetchCountsRef.current = fetchCounts
+    fetchCounts()
+    const intervalId = setInterval(fetchCounts, 10000) // 10秒ごと
+
+    return () => clearInterval(intervalId)
+  }, [contacts])
+
+  // タブに戻ったとき即時更新（成長を確実に反映する）
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchCountsRef.current()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
+
+  // 手動確定後に各カウントをローカルで即時更新する
+  const handleManualConfirmed = useCallback((contactId: string) => {
+    setLiveRepliedCounts(prev => ({ ...prev, [contactId]: 0 }))
+    setLiveConfirmedCounts(prev => ({ ...prev, [contactId]: (prev[contactId] ?? 0) + 1 }))
+    setLivePendingCounts(prev => ({ ...prev, [contactId]: Math.max(0, (prev[contactId] ?? 0) - 1) }))
+  }, [])
+
+  // 要約提出後にキャラクターの成長カウントをローカルで即時更新する
+  const handleSummarySubmitted = useCallback((contactId: string) => {
+    setLiveSummaryCounts(prev => ({ ...prev, [contactId]: (prev[contactId] ?? 0) + 1 }))
+  }, [])
+
+  const totalConfirmed = contacts.reduce(
+    (sum, c) => sum + (liveConfirmedCounts[c.id] ?? c.confirmedCount),
+    0
+  )
+  const alertCount = contacts.filter(c => (liveRepliedCounts[c.id] ?? c.repliedCount) > 0).length
 
   function handleOpenModal(contactId: string) {
     setOpenModalContactId(contactId)
@@ -153,6 +286,12 @@ export default function FarmClientShell({ contacts }: Props) {
           <div className="absolute inset-0">
             <FarmCharacters
               contacts={contacts}
+              liveRepliedCounts={liveRepliedCounts}
+              liveConfirmedCounts={liveConfirmedCounts}
+              livePendingCounts={livePendingCounts}
+              liveSummaryCounts={liveSummaryCounts}
+              onManualConfirmed={handleManualConfirmed}
+              onSummarySubmitted={handleSummarySubmitted}
               openModalContactId={openModalContactId}
               onModalOpened={() => setOpenModalContactId(null)}
               onDraftCleared={(id) => setDraftContactIds(prev => {
@@ -241,6 +380,9 @@ export default function FarmClientShell({ contacts }: Props) {
                   <ContactListItem
                     key={c.id}
                     contact={c}
+                    repliedCount={liveRepliedCounts[c.id] ?? c.repliedCount}
+                    confirmedCount={liveConfirmedCounts[c.id] ?? c.confirmedCount}
+                    pendingCount={livePendingCounts[c.id] ?? c.pendingCount}
                     hasDraft={draftContactIds.has(c.id)}
                     onOpen={handleOpenModal}
                   />

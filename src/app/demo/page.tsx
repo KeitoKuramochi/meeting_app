@@ -7,11 +7,11 @@ import DemoFarmCharacters from './DemoFarmCharacters'
 
 // 成長過程を見せるためのプリセットキャラ（確定0・2・3・5・10回）
 const PRESET_CONTACTS: FarmContactWithCount[] = [
-  { id: 'preset-0',  farm_id: 'demo', contact_name: '山田先生',  character_number: 42, created_at: '', confirmedCount: 0,  pendingCount: 0, repliedCount: 0 },
-  { id: 'preset-2',  farm_id: 'demo', contact_name: '鈴木先生',  character_number: 17, created_at: '', confirmedCount: 2,  pendingCount: 0, repliedCount: 0 },
-  { id: 'preset-3',  farm_id: 'demo', contact_name: '田中先生',  character_number: 68, created_at: '', confirmedCount: 3,  pendingCount: 0, repliedCount: 0 },
-  { id: 'preset-5',  farm_id: 'demo', contact_name: '佐藤先生',  character_number: 33, created_at: '', confirmedCount: 5,  pendingCount: 0, repliedCount: 0 },
-  { id: 'preset-10', farm_id: 'demo', contact_name: '伊藤先生',  character_number: 81, created_at: '', confirmedCount: 10, pendingCount: 0, repliedCount: 0 },
+  { id: 'preset-0',  farm_id: 'demo', contact_name: '山田先生',  character_number: 42, created_at: '', confirmedCount: 0,  pendingCount: 0, repliedCount: 0, summaryCount: 0 },
+  { id: 'preset-2',  farm_id: 'demo', contact_name: '鈴木先生',  character_number: 17, created_at: '', confirmedCount: 2,  pendingCount: 0, repliedCount: 0, summaryCount: 2 },
+  { id: 'preset-3',  farm_id: 'demo', contact_name: '田中先生',  character_number: 68, created_at: '', confirmedCount: 3,  pendingCount: 0, repliedCount: 0, summaryCount: 3 },
+  { id: 'preset-5',  farm_id: 'demo', contact_name: '佐藤先生',  character_number: 33, created_at: '', confirmedCount: 5,  pendingCount: 0, repliedCount: 0, summaryCount: 5 },
+  { id: 'preset-10', farm_id: 'demo', contact_name: '伊藤先生',  character_number: 81, created_at: '', confirmedCount: 10, pendingCount: 0, repliedCount: 0, summaryCount: 10 },
 ]
 
 const STORAGE_KEY = 'demo_contacts'
@@ -63,6 +63,7 @@ export default function DemoPage() {
       confirmedCount: 0,
       pendingCount: 0,
       repliedCount: 0,
+      summaryCount: 0,
     }))
     setExtraContacts(extras)
     setIsLoaded(true)

@@ -35,7 +35,7 @@ export default async function TopPage({ searchParams }: Props) {
           {[
             { emoji: '🐾', text: '相手をキャラとして農園に登録' },
             { emoji: '📅', text: 'URLを送るだけで日程を確定' },
-            { emoji: '🏆', text: '会うたびにキャラが成長する' },
+            { emoji: '🏆', text: '要約を記録するとキャラが成長する' },
           ].map(({ emoji, text }) => (
             <div key={text} className="flex items-center gap-3 py-1">
               <span className="text-xl shrink-0">{emoji}</span>

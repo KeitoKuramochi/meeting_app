@@ -25,6 +25,58 @@
 > ここだけ読めば「これまで何があったか・今どういう状態か・次に何をすべきか」が分かる状態を保つこと。
 > フォーマット: `### YYYY-MM-DD セッション種別 — 一言タイトル` の見出し＋箇条書き（やったこと／分かったこと／次にやること）。
 
+### 2026-07-05 機能追加（/plan→実装） — ミーティング要約提出でキャラクターが成長する仕組みに変更
+- ユーザー要望: 「確定」ではなく「ミーティング後に要約を提出したこと」をキャラクター成長のトリガーに変更し、次回ミーティング前に前回の要約をすぐ見返せるようにする。要約の提出方法は (1)要約済みメモの貼り付け (2)文字起こしの貼り付け (3)簡単なメモ＋4つの参考質問への回答、の3パターン
+- パターン(2)(3)の本来の想定（AIによる要約生成）はCLAUDE.mdの絶対ルール（外部API接続が必要になったら停止して人間に相談する）に該当するため、事前にAskUserQuestionでユーザーに確認。「今回はUI・DB保存までを実装し、AI要約部分は後回し（プレースホルダーとして貼り付けテキストをそのまま保存/テンプレート整形で保存）」の方針で承認を得た。同様に「成長トリガーは確定から要約提出への完全切替」「提出はfarm側（ログイン済み）の履歴モーダルから」も確認済み
+- **実装した内容**:
+  - `supabase/migrations/005_meeting_summary.sql`（新規）: `meetings`に`summary_text`/`summary_source`/`summary_raw_input`/`summary_qa`/`summary_submitted_at`を追加
+  - `src/types/meeting.ts`・`src/types/farm.ts`: 上記カラムの型と`SummarySource`/`QAPair`型、`FarmContactWithCount.summaryCount`を追加
+  - `src/app/farm/page.tsx`・`src/app/farm/FarmClientShell.tsx`: `summary_submitted_at`基準の`summaryCount`/`liveSummaryCounts`を既存の確定カウント集計と並行して追加集計（既存の「✅N回確定」表示は`confirmedCount`のまま変更していない）
+  - `src/app/farm/FarmCharacters.tsx`: キャラクターの見た目の成長（拡大サイズ・キラキラ/ハート・レベルアップバッジ・王冠・吹き出しの回数表示）を`confirmedCount`から`summaryCount`基準に切替。履歴モーダルに「📝要約を記録する」ボタン＋3パターン切替フォームを追加し、送信で`meetings`を更新後`onSummarySubmitted`で成長カウントを楽観的更新。モーダル最上部に直近の要約を「📄前回のまとめ」として常時表示
+  - `src/app/demo/page.tsx`: 型追加による`FarmContactWithCount`の必須プロパティ不足エラーを解消するため`summaryCount`を追加（デモ自体の成長ロジックは`confirmedCount`基準のまま未変更、対象外）
+- `npm run build`成功、型エラーなしを確認。Playwrightで`/demo`が崩れていないことを確認（要約機能を追加した`/farm`とは別コンポーネントで無関係だが型変更の影響がないことの回帰確認として実施）
+- **追記（同日・後続作業）**: ユーザーがGoogle AI Studio(Gemini)のAPIキーを取得し、現段階ではGeminiで実際にAI要約を行うことを明示的に指示。これはCLAUDE.mdの「外部API接続が必要になったら停止して人間に相談する」に該当する箇所で、人間が明示的に導入を指示したため実装した
+  - `npm install @google/genai`（新規依存追加）
+  - `src/lib/summarize.ts`（新規）: `summarizeTranscript()`/`summarizeFromQA()`。`GEMINI_API_KEY`環境変数を使用し`ai.models.generateContent({model:'gemini-2.0-flash', contents})`を呼び出す。SDKの型定義(`node_modules/@google/genai/dist/node/node.d.ts`)を直接確認し、WebFetchで得た`interactions.create`系の情報は複雑なAgent向けAPIであり単純な要約には合わないと判断、シンプルな`models.generateContent`を採用
+  - `src/app/api/summarize/route.ts`（新規）: APIキーをクライアントに渡さないよう、Route Handler経由でサーバー側のみ呼び出す構成
+  - `src/app/farm/FarmCharacters.tsx`: 要約提出フォームのtranscript/memo_qaパターンを、プレースホルダー処理から`/api/summarize`呼び出しに変更。エラー時はフォーム内にエラー表示し再試行可能にした（`summarySubmitError`state追加）。pattern1(貼り付け済み要約)はAPI呼び出しなしのまま変更なし
+  - `npm run build`成功。開発サーバーで`GEMINI_API_KEY`未設定時に`{"error":"GEMINI_API_KEY が設定されていません"}`が返ることを確認済み（正常なエラーハンドリング）
+- **追記（同日・詰めの甘さを確認して修正）**: ユーザーから「今のプランでやれてないこと・やりきれてないところを確認して実装して」と依頼を受け、以下を発見・修正
+  - **セキュリティ上の抜け（修正済み）**: `src/app/api/summarize/route.ts`に認証チェックがなく、誰でも呼び出せてGemini APIの費用を第三者に消費されうる状態だった。`createSupabaseServerClient()`でログイン確認し、未ログインは401を返すよう修正。開発サーバーで未認証リクエストが401になることを確認済み
+  - **バリデーション漏れ（修正済み）**: 要約提出フォームの「メモ+質問」パターンで、メモも質問回答も空のまま送信できてしまうガードがなかった（pasted/transcriptパターンには元々あった）。`canSubmitSummary`を導入し3パターン共通のガード・送信ボタンのdisabled制御に統一
+  - **UI不整合（修正済み）**: 要約フォームでタブを切り替えても前のエラーメッセージが残り続けるバグを修正（タブ切替時に`summarySubmitError`をクリア）
+  - **ドキュメントの記述ズレ（修正済み）**: `src/app/guide/page.tsx`のSTEP5と`src/app/page.tsx`のトップ訴求文が「ミーティングが確定するとキャラが成長する」という旧仕様のままだった（実際は要約提出がトリガー）。文言を「要約を記録するとキャラが成長する」に修正し、Playwrightで`/guide`・`/`のレイアウト崩れがないことを確認済み。なお`/demo`の同種の文言はデモ自身のロジック（confirmedCount基準、変更していない）と整合しているため意図的に対象外とした
+  - `npm run build`・`npm run lint`を実行。lintで検出された10件のerror/29件のwarningは`git diff`で今回の変更箇所ではないことを確認済み（既存コードの`stateRef.current`をレンダー中に参照している箇所、`useEffect`内の直接`setState`、`<a>`タグ使用など、すべて本セッション以前からの既存事項）。今回追加したコードに`any`型は使用していない
+- **追記（同日・キー設定後の実地確認）**: ユーザーが`GEMINI_API_KEY`を`.env.local`に設定し、マイグレーションもSupabaseに適用済み。以下を確認した
+  - Supabaseに`summary_*`5カラムが存在することをanonクライアントで確認
+  - `gemini-2.0-flash`は無料枠の上限が0（`429 RESOURCE_EXHAUSTED`、`limit: 0`）で使えず、モデルが無料枠対象外になっていることが判明。`gemini-2.5-flash-lite`に変更したところ正常に動作し、実際の文字起こしサンプルで「話した内容/決まったこと/次のアクション」に整理された要約が生成されることを確認（`src/lib/summarize.ts`の`MODEL`定数を変更）
+  - `npm run build`成功
+- **未確認（要人間対応・更新）**:
+  1. `/farm`はGoogle/DiscordのOAuthログインが必須でPlaywrightからログインできず、新しい要約提出フォーム・成長切替の**実ブラウザでの**確認は依然未実施（API/DB/ライブラリレベルでは動作確認済み）。ログイン可能な人間による実地確認をお願いしたい
+  2. まだ`git commit`していない（コミットするかはユーザー確認待ち）
+  3. ユーザーは「本番環境はClaude Haikuモデルを課金して使う」意向を示している。現在の実装はGemini専用（`src/lib/summarize.ts`が直接Gemini SDKを呼ぶ構造）なので、本番切替時はプロバイダを差し替える改修が別途必要（例: 環境変数で分岐、またはClaude Haiku用の別実装に一本化）。今回はスコープ外
+- **追記（同日・Claudeメイン化）**: ユーザーから「メインはClaude API、うまくいかない時用にGemini APIも入れておきたい」と依頼。`src/lib/summarize.ts`を書き換え、`summarizeWithClaude()`（`claude-haiku-4-5`、Anthropic公式SDK使用）を優先し、失敗時のみ`summarizeWithGemini()`にフォールバックする構成に変更
+  - `npm install @anthropic-ai/sdk`
+  - プロンプト生成（`buildTranscriptPrompt`/`buildQaPrompt`）を両プロバイダ共通化し、`generateSummary()`がClaude→失敗時Geminiの順で試行
+  - `ANTHROPIC_API_KEY`は未設定のため、実際に「Claude失敗→Geminiにフォールバック」する経路が動くことをテストスクリプトで確認済み（`ANTHROPIC_API_KEY`を人間が設定すればClaudeがメインで使われるようになる）
+  - `npm run build`成功
+- **未確認（要人間対応・更新2）**:
+  1. `ANTHROPIC_API_KEY`を`.env.local`に設定していないため、現状は常にGeminiにフォールバックしている状態（動作は問題ないが、ユーザーの意図する「メインはClaude」にはまだなっていない）。設定すればClaudeがメインで使われる
+  2. `/farm`の実ブラウザでの動作確認は依然未実施（ログイン制約）
+  3. `git commit`はまだしていない
+- 次にやること: 人間が`ANTHROPIC_API_KEY`を`.env.local`に追加 → ログインして`/farm`で3パターンの要約提出・キャラ成長・リロード後の保持を目視確認 → 問題なければcommitの指示を出す
+
+### 2026-07-05 不具合横断調査 — 「一覧は確定待ち、キャラは無反応」の不整合バグを特定・修正
+- ユーザーから「なかま一覧では確定待ちなのに、農園のキャラクター表示には何も出ていないことがある」と報告を受け、`/farm`まわりの状態表示ロジックを横断的に調査（`/farm`は認証必須でPlaywrightでは見た目を直接確認できないため、コードトレース＋Supabaseへの検証用データ投入によるクエリ結果の突き合わせで検証）
+- **根本原因1（確定した具体バグ）**: `src/app/farm/page.tsx`のSSR初期表示用クエリのうち、`confirmedCounts`と`repliedCounts`は`confirmed_index`と`manually_confirmed`の両方をチェックしていたが、`pendingCounts`のクエリだけ`confirmed_index IS NULL`しか見ておらず`manually_confirmed`を考慮していなかった。そのため「チャットで確定した（手動確定）」を押した相手は、`confirmed_index`が`null`のまま残るため「なかま一覧」上では永久に「⏳確定待ち」と表示され続けるバグがあった。一方 `FarmCharacters.tsx`側のライブポーリングは両方を正しくチェックしていたため、キャラクター本体（10秒ごとに再取得）は正しく「確定待ちではない」状態になり、結果として一覧とキャラ表示が食い違って見えていた
+  - 検証用データをSupabaseに投入し、修正前後のクエリを直接比較して実証済み：同じデータに対し旧クエリは確定待ち2件・新クエリは1件（手動確定分を正しく除外）
+  - 修正: `pendingCounts`のクエリに`.or('manually_confirmed.is.null,manually_confirmed.eq.false')`を追加（`confirmedCounts`/`repliedCounts`と同じ条件に統一）
+- **根本原因2（より一般的なアーキテクチャ上の原因）**: 「なかま一覧」ドロワー（`FarmClientShell.tsx`のContactListItem）はページ読み込み時にサーバーで1回だけ計算された`contact.pendingCount`等の**静的スナップショット**を表示していたのに対し、農園内のキャラクター（`FarmCharacters.tsx`）は**10秒ごとにSupabaseへポーリングして自前で更新**していた。そのため手動確定に限らず、通常の`/r/[id]`での確定・返信が届いた場合も、ページを再読み込みしない限り一覧側の表示だけがいつまでも古いままになる作りだった
+  - 修正: ライブカウントの取得・ポーリング処理（`fetchCounts`・`liveRepliedCounts`/`liveConfirmedCounts`/`livePendingCounts`・手動確定時の即時反映）を`FarmCharacters.tsx`から`FarmClientShell.tsx`に移動し、「なかま一覧」ドロワーとキャラクター表示の両方が同じ1つのライブデータを参照するように統一。これにより今後は一覧とキャラ表示が構造的にずれなくなる
+- `npm run build`成功、TypeScriptエラーなしを確認。ただし`/farm`はログイン情報がなくPlaywrightで実際の画面表示までは確認できていない（コードトレースとSupabaseでのクエリ結果比較による検証のみ）。次にログイン可能なセッションがあれば、実際に「手動確定→なかま一覧の表示が即座に✅確定済みに変わる」ことを目視確認してほしい
+- 検証で作成したテストmeetingデータがさらに1件残置（id: `894c9c54-a2c9-465c-8e33-fc8a79233e0d`、student_name「バグ検証用（手動確定シミュレーション）」）。これまでの分と合わせて計4件、anonキーでは削除不可のためSupabaseダッシュボードでの削除は人間にお願いします
+- 次にやること: 同種の「複数箇所で同じ集計ロジックを別々に実装していて食い違う」パターンが他にもないか、余裕があれば引き続き確認する。RLS未設定の問題は引き続き未対応（要人間判断）
+
 ### 2026-07-05 パフォーマンス改善 — 画像アセットの大幅軽量化、全ワークフローの再確認
 - ユーザーから「読み込みが重い」との指摘を受け `/web-perf` スキルの方針でパフォーマンス調査を実施。chrome-devtools MCPは未接続のためPlaywright MCPのネットワーク計測（`fetch` + `cache:no-store` による実転送量計測、`browser_network_requests`）とコードベース調査で代替
 - **最大の原因を特定**: `public/images/processed_1〜100.png`（キャラ立ち絵）と `processed_a1〜a7.png`（エフェクト）が全て実寸1024×1024px・1枚700KB〜1.7MBで用意されていたが、実際の表示サイズは最大でも160px（`/demo/add`の選択中プレビュー）。`/demo/add`・`/farm/add`のキャラ選択グリッドは100体分の`<img>`を`loading="lazy"`付きで並べているが、ローカル環境の高速接続ではChromiumの先読み距離ヒューリスティックにより実質ほぼ全件が初回読み込み時にリクエストされることを確認（`browser_network_requests`で100件のGETを確認）。合計で**1ページあたり最大100〜150MB相当の画像転送が発生し得る状態**だった

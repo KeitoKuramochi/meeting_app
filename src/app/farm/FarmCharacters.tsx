@@ -4,7 +4,36 @@ import { useEffect, useRef, useState, useCallback, type RefObject } from 'react'
 import { useRouter } from 'next/navigation'
 import { FarmContactWithCount } from '@/types/farm'
 import { getSupabase } from '@/lib/supabase'
-import { Candidate } from '@/types/meeting'
+import { Candidate, SummarySource, QAPair } from '@/types/meeting'
+
+// 要約提出パターン3（メモ＋質問）の固定参考質問
+const SUMMARY_REFERENCE_QUESTIONS = [
+  '話した主なトピックは？',
+  '決まったこと・次のアクションは？',
+  '相手の様子・反応は？',
+  '次回までに準備することは？',
+]
+
+const SUMMARY_SOURCE_LABEL: Record<SummarySource, string> = {
+  pasted: '要約済みメモ',
+  transcript: '文字起こし',
+  memo_qa: 'メモ＋質問',
+}
+
+async function requestAiSummary(
+  body: { mode: 'transcript'; text: string } | { mode: 'memo_qa'; memo: string; qa: QAPair[] }
+): Promise<string> {
+  const res = await fetch('/api/summarize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json()
+  if (!res.ok) {
+    throw new Error(data.error ?? '要約の生成に失敗しました')
+  }
+  return data.summary as string
+}
 
 // localStorage に保存される draft の型
 type DraftData = {
@@ -26,14 +55,10 @@ type MeetingHistoryItem = {
   duration_minutes: number | null
   note: string | null
   manually_confirmed: boolean | null
-}
-
-// Supabase から取得する meetings の部分型（ポーリング用）
-type MeetingReplyRow = {
-  farm_contact_id: string
-  replied_at: string | null
-  confirmed_index: number | null
-  manually_confirmed: boolean | null  // ADD THIS
+  summary_text: string | null
+  summary_source: SummarySource | null
+  summary_qa: QAPair[] | null
+  summary_submitted_at: string | null
 }
 
 // 型ガード: 読み取った値が DraftData かを検証する
@@ -108,16 +133,18 @@ type CharacterProps = {
   liveRepliedCount: number
   liveConfirmedCount: number
   livePendingCount: number
+  liveSummaryCount: number
   index: number
   isCrown: boolean
   onManualConfirmed: (contactId: string) => void
+  onSummarySubmitted: (contactId: string) => void
   onDraftCleared?: (contactId: string) => void
   requestedOpen?: boolean
   onModalOpened?: () => void
   positionsRef: RefObject<({ x: number; y: number } | null)[]>
 }
 
-function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingCount, index, isCrown, onManualConfirmed, onDraftCleared, requestedOpen, onModalOpened, positionsRef }: CharacterProps) {
+function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingCount, liveSummaryCount, index, isCrown, onManualConfirmed, onSummarySubmitted, onDraftCleared, requestedOpen, onModalOpened, positionsRef }: CharacterProps) {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
@@ -148,18 +175,36 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
   const [localManualConfirmed, setLocalManualConfirmed] = useState(false)
   const [locallyConfirmedIds, setLocallyConfirmedIds] = useState<Set<string>>(new Set())
 
-  // 成長検知
-  const prevConfirmedRef = useRef(liveConfirmedCount)
+  // 要約提出フォーム
+  const [summaryFormItemId, setSummaryFormItemId] = useState<string | null>(null)
+  const [summaryTab, setSummaryTab] = useState<SummarySource>('pasted')
+  const [summaryPastedText, setSummaryPastedText] = useState('')
+  const [summaryTranscriptText, setSummaryTranscriptText] = useState('')
+  const [summaryMemoText, setSummaryMemoText] = useState('')
+  const [summaryQaAnswers, setSummaryQaAnswers] = useState<string[]>(
+    SUMMARY_REFERENCE_QUESTIONS.map(() => '')
+  )
+  const [isSubmittingSummary, setIsSubmittingSummary] = useState(false)
+  const [summarySubmitError, setSummarySubmitError] = useState<string | null>(null)
+  const canSubmitSummary =
+    summaryTab === 'pasted'
+      ? summaryPastedText.trim().length > 0
+      : summaryTab === 'transcript'
+      ? summaryTranscriptText.trim().length > 0
+      : summaryMemoText.trim().length > 0 || summaryQaAnswers.some(a => a.trim().length > 0)
+
+  // 成長検知（要約提出回数がトリガー）
+  const prevSummaryRef = useRef(liveSummaryCount)
   const [showLevelUp, setShowLevelUp] = useState(false)
   useEffect(() => {
-    if (liveConfirmedCount > prevConfirmedRef.current) {
+    if (liveSummaryCount > prevSummaryRef.current) {
       setShowLevelUp(true)
       const t = setTimeout(() => setShowLevelUp(false), 2000)
-      prevConfirmedRef.current = liveConfirmedCount
+      prevSummaryRef.current = liveSummaryCount
       return () => clearTimeout(t)
     }
-    prevConfirmedRef.current = liveConfirmedCount
-  }, [liveConfirmedCount])
+    prevSummaryRef.current = liveSummaryCount
+  }, [liveSummaryCount])
 
   useEffect(() => {
     setDraft(readDraft(contact.id))
@@ -177,15 +222,17 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
   const effectiveRepliedCount = liveRepliedCount
   const confirmedCount = liveConfirmedCount
   const pendingCount = livePendingCount
+  const summaryCount = liveSummaryCount
   const isAsleep = confirmedCount === 0
   const baseSpeed = isAsleep ? 0.12 : 0.4 + seedRand(index, 6) * 0.25
   const hasDraft = draft !== null
   const showReplied = effectiveRepliedCount > 0 && !localManualConfirmed
   const showPending = pendingCount > 0 && effectiveRepliedCount === 0
   const showZzz = confirmedCount === 0 && pendingCount === 0 && effectiveRepliedCount === 0 && !hasDraft
-  const showKira = confirmedCount >= 3
-  const showHeart = confirmedCount >= 4
-  const scale = getScale(confirmedCount)
+  // キャラクターの見た目の成長（拡大・キラキラ/ハート演出）は要約提出回数で決まる
+  const showKira = summaryCount >= 3
+  const showHeart = summaryCount >= 4
+  const scale = getScale(summaryCount)
 
   const [kiraPhase, setKiraPhase] = useState(true)
   useEffect(() => {
@@ -345,7 +392,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
       const supabase = getSupabase()
       const { data, error } = await supabase
         .from('meetings')
-        .select('id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note, manually_confirmed')
+        .select('id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note, manually_confirmed, summary_text, summary_source, summary_qa, summary_submitted_at')
         .eq('farm_contact_id', contact.id)
         .order('created_at', { ascending: false })
       if (error) {
@@ -475,6 +522,87 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
     }
   }
 
+  function openSummaryForm(itemId: string) {
+    setSummaryFormItemId(itemId)
+    setSummaryTab('pasted')
+    setSummaryPastedText('')
+    setSummaryTranscriptText('')
+    setSummaryMemoText('')
+    setSummaryQaAnswers(SUMMARY_REFERENCE_QUESTIONS.map(() => ''))
+    setSummarySubmitError(null)
+  }
+
+  function closeSummaryForm() {
+    setSummaryFormItemId(null)
+  }
+
+  async function handleSummarySubmit(meetingId: string) {
+    let summaryRawInput: string | null = null
+    let summaryQa: QAPair[] | null = null
+
+    if (!canSubmitSummary) return
+
+    setSummarySubmitError(null)
+    setIsSubmittingSummary(true)
+    try {
+      let summaryText: string
+      if (summaryTab === 'pasted') {
+        summaryText = summaryPastedText.trim()
+      } else if (summaryTab === 'transcript') {
+        summaryRawInput = summaryTranscriptText.trim()
+        summaryText = await requestAiSummary({ mode: 'transcript', text: summaryRawInput })
+      } else {
+        summaryRawInput = summaryMemoText.trim()
+        summaryQa = SUMMARY_REFERENCE_QUESTIONS.map((question, i) => ({
+          question,
+          answer: summaryQaAnswers[i] ?? '',
+        }))
+        summaryText = await requestAiSummary({ mode: 'memo_qa', memo: summaryMemoText, qa: summaryQa })
+      }
+
+      const submittedAt = new Date().toISOString()
+      const supabase = getSupabase()
+      const { error } = await supabase
+        .from('meetings')
+        .update({
+          summary_text: summaryText,
+          summary_source: summaryTab,
+          summary_raw_input: summaryRawInput,
+          summary_qa: summaryQa,
+          summary_submitted_at: submittedAt,
+        })
+        .eq('id', meetingId)
+      if (error) {
+        setSummarySubmitError('保存に失敗しました。もう一度お試しください')
+        return
+      }
+      setHistoryItems(prev =>
+        prev.map(item =>
+          item.id === meetingId
+            ? {
+                ...item,
+                summary_text: summaryText,
+                summary_source: summaryTab,
+                summary_qa: summaryQa,
+                summary_submitted_at: submittedAt,
+              }
+            : item
+        )
+      )
+      onSummarySubmitted(contact.id)
+      closeSummaryForm()
+    } catch (e) {
+      setSummarySubmitError(e instanceof Error ? e.message : '要約の生成に失敗しました')
+    } finally {
+      setIsSubmittingSummary(false)
+    }
+  }
+
+  // 直近に提出された要約（次回ミーティング前にすぐ見返せるようにする）
+  const latestSummaryItem = historyItems
+    .filter(item => item.summary_submitted_at !== null)
+    .sort((a, b) => new Date(b.summary_submitted_at!).getTime() - new Date(a.summary_submitted_at!).getTime())[0] ?? null
+
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
   return (
@@ -524,6 +652,21 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                   >
                     送信済みにする（未送信を消す）
                   </button>
+                </div>
+              )}
+
+              {/* 直近の要約を常に見返せるように最上部に表示 */}
+              {latestSummaryItem && (
+                <div className="rounded-xl p-3 space-y-1" style={{ background: '#ecfdf5', border: '1.5px solid #6ee7b7' }}>
+                  <p className="text-xs font-semibold" style={{ color: '#065f46' }}>
+                    📄 前回のまとめ
+                    {latestSummaryItem.summary_source && (
+                      <span className="ml-1 font-normal" style={{ color: '#4d7c0f' }}>
+                        （{SUMMARY_SOURCE_LABEL[latestSummaryItem.summary_source]}）
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs whitespace-pre-wrap" style={{ color: '#14532d' }}>{latestSummaryItem.summary_text}</p>
                 </div>
               )}
 
@@ -622,6 +765,131 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                         <div className="text-xs font-medium" style={{ color: '#065f46' }}>
                           確定済み
                           {item.duration_minutes != null && ` • ${formatDuration(item.duration_minutes)}`}
+                        </div>
+                      )}
+
+                      {/* 要約: 提出済みなら表示、未提出（確定済みのみ）なら記録ボタン/フォーム */}
+                      {isConfirmed && item.summary_submitted_at && (
+                        <div className="rounded-lg px-2.5 py-2 text-xs space-y-1" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                          <p className="font-semibold" style={{ color: '#166534' }}>
+                            📄 要約
+                            {item.summary_source && (
+                              <span className="ml-1 font-normal" style={{ color: '#4d7c0f' }}>
+                                （{SUMMARY_SOURCE_LABEL[item.summary_source]}）
+                              </span>
+                            )}
+                          </p>
+                          <p className="whitespace-pre-wrap" style={{ color: '#14532d' }}>{item.summary_text}</p>
+                        </div>
+                      )}
+                      {isConfirmed && !item.summary_submitted_at && summaryFormItemId !== item.id && (
+                        <button
+                          type="button"
+                          onClick={() => openSummaryForm(item.id)}
+                          className="farm-btn flex h-10 w-full items-center justify-center text-xs focus:outline-none transition-colors"
+                        >
+                          📝 要約を記録する
+                        </button>
+                      )}
+                      {summaryFormItemId === item.id && (
+                        <div className="rounded-lg p-2.5 space-y-2" style={{ background: '#fefce8', border: '1px solid #fde68a' }}>
+                          <div className="flex gap-1">
+                            {(['pasted', 'transcript', 'memo_qa'] as SummarySource[]).map(tab => (
+                              <button
+                                key={tab}
+                                type="button"
+                                onClick={() => { setSummaryTab(tab); setSummarySubmitError(null) }}
+                                className="flex-1 rounded-md px-1.5 py-1.5 text-xs font-semibold focus:outline-none transition-colors"
+                                style={{
+                                  background: summaryTab === tab ? '#2a5c1e' : '#fffdf7',
+                                  color: summaryTab === tab ? '#f5e6a3' : '#6b4c0a',
+                                  border: '1px solid #d4a853',
+                                }}
+                              >
+                                {SUMMARY_SOURCE_LABEL[tab]}
+                              </button>
+                            ))}
+                          </div>
+
+                          {summaryTab === 'pasted' && (
+                            <textarea
+                              value={summaryPastedText}
+                              onChange={e => setSummaryPastedText(e.target.value)}
+                              placeholder="Granolaなどで作った要約を貼り付けてください"
+                              className="w-full rounded-md p-2 text-xs focus:outline-none"
+                              style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
+                              rows={4}
+                            />
+                          )}
+
+                          {summaryTab === 'transcript' && (
+                            <div className="space-y-1">
+                              <textarea
+                                value={summaryTranscriptText}
+                                onChange={e => setSummaryTranscriptText(e.target.value)}
+                                placeholder="文字起こしをそのまま貼り付けてください"
+                                className="w-full rounded-md p-2 text-xs focus:outline-none"
+                                style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
+                                rows={4}
+                              />
+                              <p className="text-xs" style={{ color: '#92400e' }}>
+                                ※ AIが自動で要約を作成します
+                              </p>
+                            </div>
+                          )}
+
+                          {summaryTab === 'memo_qa' && (
+                            <div className="space-y-2">
+                              <textarea
+                                value={summaryMemoText}
+                                onChange={e => setSummaryMemoText(e.target.value)}
+                                placeholder="簡単なメモ（任意）"
+                                className="w-full rounded-md p-2 text-xs focus:outline-none"
+                                style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
+                                rows={2}
+                              />
+                              {SUMMARY_REFERENCE_QUESTIONS.map((q, i) => (
+                                <div key={i} className="space-y-1">
+                                  <p className="text-xs font-medium" style={{ color: '#6b4c0a' }}>{q}</p>
+                                  <textarea
+                                    value={summaryQaAnswers[i]}
+                                    onChange={e => setSummaryQaAnswers(prev => {
+                                      const next = [...prev]
+                                      next[i] = e.target.value
+                                      return next
+                                    })}
+                                    className="w-full rounded-md p-2 text-xs focus:outline-none"
+                                    style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
+                                    rows={2}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {summarySubmitError && (
+                            <p className="text-xs" style={{ color: '#b91c1c' }}>{summarySubmitError}</p>
+                          )}
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSummarySubmit(item.id)}
+                              disabled={isSubmittingSummary || !canSubmitSummary}
+                              className="farm-btn flex-1 flex h-10 items-center justify-center text-xs focus:outline-none transition-colors disabled:opacity-60"
+                            >
+                              {isSubmittingSummary
+                                ? (summaryTab === 'pasted' ? '送信中...' : 'AIが要約中...')
+                                : '要約を提出する'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={closeSummaryForm}
+                              className="flex h-10 px-3 items-center justify-center rounded-lg text-xs font-medium focus:outline-none transition-colors"
+                              style={{ border: '1.5px solid #d4a853', color: '#6b4c0a', background: '#fffdf7' }}
+                            >
+                              キャンセル
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -753,7 +1021,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
             ) : showPending ? (
               <PendingDots />
             ) : (
-              <>{confirmedCount}回</>
+              <>{summaryCount}回</>
             )}
           </span>
         </div>
@@ -833,108 +1101,30 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
 
 type Props = {
   contacts: FarmContactWithCount[]
+  liveRepliedCounts: Record<string, number>
+  liveConfirmedCounts: Record<string, number>
+  livePendingCounts: Record<string, number>
+  liveSummaryCounts: Record<string, number>
+  onManualConfirmed: (contactId: string) => void
+  onSummarySubmitted: (contactId: string) => void
   openModalContactId?: string | null
   onModalOpened?: () => void
   onDraftCleared?: (contactId: string) => void
 }
 
-export default function FarmCharacters({ contacts, openModalContactId, onModalOpened, onDraftCleared }: Props) {
+export default function FarmCharacters({
+  contacts,
+  liveRepliedCounts,
+  liveConfirmedCounts,
+  livePendingCounts,
+  liveSummaryCounts,
+  onManualConfirmed,
+  onSummarySubmitted,
+  openModalContactId,
+  onModalOpened,
+  onDraftCleared,
+}: Props) {
   const positionsRef = useRef<({ x: number; y: number } | null)[]>([])
-  const initCounts = useCallback(() => {
-    const replied: Record<string, number> = {}
-    const confirmed: Record<string, number> = {}
-    const pending: Record<string, number> = {}
-    for (const c of contacts) {
-      replied[c.id] = c.repliedCount
-      confirmed[c.id] = c.confirmedCount
-      pending[c.id] = c.pendingCount
-    }
-    return { replied, confirmed, pending }
-  }, [contacts])
-
-  const [liveRepliedCounts, setLiveRepliedCounts] = useState<Record<string, number>>(
-    () => initCounts().replied
-  )
-  const [liveConfirmedCounts, setLiveConfirmedCounts] = useState<Record<string, number>>(
-    () => initCounts().confirmed
-  )
-  const [livePendingCounts, setLivePendingCounts] = useState<Record<string, number>>(
-    () => initCounts().pending
-  )
-
-  // ポーリング用 fetchCounts を ref に保持（visibilitychange から呼べるようにする）
-  const fetchCountsRef = useRef<() => Promise<void>>(async () => { /* init */ })
-
-  useEffect(() => {
-    if (contacts.length === 0) return
-
-    const contactIds = contacts.map(c => c.id)
-
-    const fetchCounts = async () => {
-      try {
-        const supabase = getSupabase()
-        const { data, error } = await supabase
-          .from('meetings')
-          .select('farm_contact_id, replied_at, confirmed_index, manually_confirmed')
-          .in('farm_contact_id', contactIds)
-
-        // エラー・null・空配列の場合はリセットせず現状維持
-        if (error || !data || data.length === 0) return
-
-        const repliedMap: Record<string, number> = {}
-        const confirmedMap: Record<string, number> = {}
-        const pendingMap: Record<string, number> = {}
-        for (const id of contactIds) {
-          repliedMap[id] = 0
-          confirmedMap[id] = 0
-          pendingMap[id] = 0
-        }
-        for (const row of data as MeetingReplyRow[]) {
-          const cid = row.farm_contact_id
-          if (!(cid in repliedMap)) continue
-          const isConfirmedRow = row.confirmed_index !== null || row.manually_confirmed === true
-          // 確定済み
-          if (isConfirmedRow) {
-            confirmedMap[cid] = (confirmedMap[cid] ?? 0) + 1
-          } else {
-            // 未確定 → 確定待ちカウント
-            pendingMap[cid] = (pendingMap[cid] ?? 0) + 1
-            // 未確定 かつ 返信あり
-            if (row.replied_at !== null) {
-              repliedMap[cid] = (repliedMap[cid] ?? 0) + 1
-            }
-          }
-        }
-        setLiveRepliedCounts(repliedMap)
-        setLiveConfirmedCounts(confirmedMap)
-        setLivePendingCounts(pendingMap)
-      } catch {
-        // ポーリングエラーは無視する
-      }
-    }
-
-    fetchCountsRef.current = fetchCounts
-    fetchCounts()
-    const intervalId = setInterval(fetchCounts, 10000)  // 10秒ごと
-
-    return () => clearInterval(intervalId)
-  }, [contacts])
-
-  // タブに戻ったとき即時更新（成長を確実に反映する）
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') fetchCountsRef.current()
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [])
-
-  // 手動確定後に各カウントをローカルで即時更新する
-  const handleManualConfirmed = useCallback((contactId: string) => {
-    setLiveRepliedCounts(prev => ({ ...prev, [contactId]: 0 }))
-    setLiveConfirmedCounts(prev => ({ ...prev, [contactId]: (prev[contactId] ?? 0) + 1 }))
-    setLivePendingCounts(prev => ({ ...prev, [contactId]: Math.max(0, (prev[contactId] ?? 0) - 1) }))
-  }, [])
 
   if (contacts.length === 0) {
     return (
@@ -948,8 +1138,9 @@ export default function FarmCharacters({ contacts, openModalContactId, onModalOp
     )
   }
 
-  const maxCount = Math.max(...contacts.map(c => liveConfirmedCounts[c.id] ?? c.confirmedCount))
-  const crownId = contacts.find(c => (liveConfirmedCounts[c.id] ?? c.confirmedCount) === maxCount)?.id ?? ''
+  // 王冠（最も成長している=要約提出回数が最も多い相手）
+  const maxCount = Math.max(...contacts.map(c => liveSummaryCounts[c.id] ?? c.summaryCount))
+  const crownId = contacts.find(c => (liveSummaryCounts[c.id] ?? c.summaryCount) === maxCount)?.id ?? ''
 
   return (
     <>
@@ -960,9 +1151,11 @@ export default function FarmCharacters({ contacts, openModalContactId, onModalOp
           liveRepliedCount={liveRepliedCounts[contact.id] ?? contact.repliedCount}
           liveConfirmedCount={liveConfirmedCounts[contact.id] ?? contact.confirmedCount}
           livePendingCount={livePendingCounts[contact.id] ?? contact.pendingCount}
+          liveSummaryCount={liveSummaryCounts[contact.id] ?? contact.summaryCount}
           index={index}
           isCrown={contact.id === crownId}
-          onManualConfirmed={handleManualConfirmed}
+          onManualConfirmed={onManualConfirmed}
+          onSummarySubmitted={onSummarySubmitted}
           onDraftCleared={onDraftCleared}
           requestedOpen={openModalContactId === contact.id}
           onModalOpened={onModalOpened}
