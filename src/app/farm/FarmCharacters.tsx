@@ -61,6 +61,10 @@ type MeetingHistoryItem = {
   summary_submitted_at: string | null
 }
 
+// meetings 履歴取得・直接記録作成の両方で使う共通の select 列
+const MEETING_HISTORY_SELECT =
+  'id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note, manually_confirmed, summary_text, summary_source, summary_qa, summary_submitted_at'
+
 // 型ガード: 読み取った値が DraftData かを検証する
 function isDraftData(value: unknown): value is DraftData {
   if (typeof value !== 'object' || value === null) return false
@@ -138,13 +142,14 @@ type CharacterProps = {
   isCrown: boolean
   onManualConfirmed: (contactId: string) => void
   onSummarySubmitted: (contactId: string) => void
+  onDirectFeedCreated: (contactId: string) => void
   onDraftCleared?: (contactId: string) => void
   requestedOpen?: boolean
   onModalOpened?: () => void
   positionsRef: RefObject<({ x: number; y: number } | null)[]>
 }
 
-function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingCount, liveSummaryCount, index, isCrown, onManualConfirmed, onSummarySubmitted, onDraftCleared, requestedOpen, onModalOpened, positionsRef }: CharacterProps) {
+function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingCount, liveSummaryCount, index, isCrown, onManualConfirmed, onSummarySubmitted, onDirectFeedCreated, onDraftCleared, requestedOpen, onModalOpened, positionsRef }: CharacterProps) {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
@@ -154,6 +159,8 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
   const touchTappedRef = useRef(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const slowdownUntilRef = useRef(0)
+  // fetchHistory の取得結果が、後から行われた直接記録の作成より古ければ捨てるための世代カウンタ
+  const fetchGenerationRef = useRef(0)
   const [grabbing, setGrabbing] = useState(false)
 
   // localStorage の draft
@@ -169,6 +176,10 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
 
   // リクエストページへのナビゲーション中フラグ
   const [isNavigating, setIsNavigating] = useState(false)
+
+  // リンク経由以外（肥料をあげる＝直接要約を記録する）の登録
+  const [isStartingDirectFeed, setIsStartingDirectFeed] = useState(false)
+  const [directFeedError, setDirectFeedError] = useState<string | null>(null)
 
   // 手動確定
   const [isConfirming, setIsConfirming] = useState(false)
@@ -388,13 +399,16 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
 
   const fetchHistory = useCallback(async () => {
     setHistoryError(false)
+    const gen = ++fetchGenerationRef.current
     try {
       const supabase = getSupabase()
       const { data, error } = await supabase
         .from('meetings')
-        .select('id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note, manually_confirmed, summary_text, summary_source, summary_qa, summary_submitted_at')
+        .select(MEETING_HISTORY_SELECT)
         .eq('farm_contact_id', contact.id)
         .order('created_at', { ascending: false })
+      // 取得中に「肥料をあげる」等で新しい記録が作られていたら、古い結果で上書きしない
+      if (gen !== fetchGenerationRef.current) return
       if (error) {
         setHistoryError(true)
       } else {
@@ -534,6 +548,43 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
 
   function closeSummaryForm() {
     setSummaryFormItemId(null)
+  }
+
+  // 「肥料をあげる」: リンク作成・日程確定を経由せず、その場で新しい記録を作って要約フォームを開く
+  async function handleStartDirectFeed() {
+    if (isStartingDirectFeed) return
+    setDirectFeedError(null)
+    setIsStartingDirectFeed(true)
+    try {
+      const supabase = getSupabase()
+      const { data, error } = await supabase
+        .from('meetings')
+        .insert({
+          student_name: contact.contact_name,
+          purpose: '🌾 肥料やり（直接記録）',
+          candidates: [],
+          farm_contact_id: contact.id,
+          manually_confirmed: true,
+        })
+        .select(MEETING_HISTORY_SELECT)
+        .single<MeetingHistoryItem>()
+      if (error || !data) {
+        setDirectFeedError('記録の作成に失敗しました。もう一度お試しください')
+        return
+      }
+      // 進行中の fetchHistory がこの新しい記録より古い結果で上書きしないよう世代を進める
+      fetchGenerationRef.current++
+      setHistoryItems(prev => [data, ...prev])
+      openSummaryForm(data.id)
+      onDirectFeedCreated(contact.id)
+      requestAnimationFrame(() => {
+        if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0
+      })
+    } catch {
+      setDirectFeedError('記録の作成に失敗しました。もう一度お試しください')
+    } finally {
+      setIsStartingDirectFeed(false)
+    }
   }
 
   async function handleSummarySubmit(meetingId: string) {
@@ -703,6 +754,8 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                     item.confirmed_index !== null && item.candidates?.[item.confirmed_index]
                       ? item.candidates[item.confirmed_index]
                       : null
+                  // リンク経由ではなく「肥料をあげる」から直接作られた記録（候補日を持たない）
+                  const isDirectFeedItem = item.candidates.length === 0 && item.manually_confirmed === true
                   const meetingUrl = `${origin}/r/${item.id}`
 
                   return (
@@ -761,7 +814,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                           {item.duration_minutes != null && ` • ${formatDuration(item.duration_minutes)}`}
                         </div>
                       )}
-                      {isConfirmed && !confirmedCandidate && (
+                      {isConfirmed && !confirmedCandidate && !isDirectFeedItem && (
                         <div className="text-xs font-medium" style={{ color: '#065f46' }}>
                           確定済み
                           {item.duration_minutes != null && ` • ${formatDuration(item.duration_minutes)}`}
@@ -924,20 +977,22 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                         </div>
                       )}
 
-                      {/* URL コピー */}
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="flex-1 truncate text-xs font-mono" style={{ color: '#8b6914' }}>
-                          {meetingUrl}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => copyMeetingUrl(item.id, meetingUrl)}
-                          className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium focus:outline-none transition-colors"
-                          style={{ border: '1.5px solid #d4a853', color: '#6b4c0a', background: '#fffdf7' }}
-                        >
-                          {copiedMeetingId === item.id ? '✓' : 'コピー'}
-                        </button>
-                      </div>
+                      {/* URL コピー（リンク経由の記録のみ。肥料をあげる記録には返信リンクが存在しないため非表示） */}
+                      {!isDirectFeedItem && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="flex-1 truncate text-xs font-mono" style={{ color: '#8b6914' }}>
+                            {meetingUrl}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyMeetingUrl(item.id, meetingUrl)}
+                            className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium focus:outline-none transition-colors"
+                            style={{ border: '1.5px solid #d4a853', color: '#6b4c0a', background: '#fffdf7' }}
+                          >
+                            {copiedMeetingId === item.id ? '✓' : 'コピー'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )
                 })
@@ -966,6 +1021,18 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                   </span>
                 ) : '新しいリクエストを送る'}
               </button>
+              <button
+                type="button"
+                onClick={handleStartDirectFeed}
+                disabled={isStartingDirectFeed}
+                className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold focus:outline-none transition-colors disabled:opacity-75"
+                style={{ border: '1.5px solid #4d7c0f', color: '#365314', background: '#ecfccb' }}
+              >
+                {isStartingDirectFeed ? '準備中...' : '🌾 肥料をあげる（要約を記録する）'}
+              </button>
+              {directFeedError && (
+                <p className="text-xs text-center" style={{ color: '#b91c1c' }}>{directFeedError}</p>
+              )}
               <button
                 type="button"
                 onClick={() => setShowHistoryModal(false)}
@@ -1107,6 +1174,7 @@ type Props = {
   liveSummaryCounts: Record<string, number>
   onManualConfirmed: (contactId: string) => void
   onSummarySubmitted: (contactId: string) => void
+  onDirectFeedCreated: (contactId: string) => void
   openModalContactId?: string | null
   onModalOpened?: () => void
   onDraftCleared?: (contactId: string) => void
@@ -1120,6 +1188,7 @@ export default function FarmCharacters({
   liveSummaryCounts,
   onManualConfirmed,
   onSummarySubmitted,
+  onDirectFeedCreated,
   openModalContactId,
   onModalOpened,
   onDraftCleared,
@@ -1156,6 +1225,7 @@ export default function FarmCharacters({
           isCrown={contact.id === crownId}
           onManualConfirmed={onManualConfirmed}
           onSummarySubmitted={onSummarySubmitted}
+          onDirectFeedCreated={onDirectFeedCreated}
           onDraftCleared={onDraftCleared}
           requestedOpen={openModalContactId === contact.id}
           onModalOpened={onModalOpened}

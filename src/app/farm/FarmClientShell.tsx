@@ -202,6 +202,11 @@ export default function FarmClientShell({ contacts }: Props) {
     setLiveSummaryCounts(prev => ({ ...prev, [contactId]: (prev[contactId] ?? 0) + 1 }))
   }, [])
 
+  // 「肥料をあげる」で直接記録を作成した直後にキャラクターの確定数をローカルで即時更新する
+  const handleDirectFeedCreated = useCallback((contactId: string) => {
+    setLiveConfirmedCounts(prev => ({ ...prev, [contactId]: (prev[contactId] ?? 0) + 1 }))
+  }, [])
+
   const totalConfirmed = contacts.reduce(
     (sum, c) => sum + (liveConfirmedCounts[c.id] ?? c.confirmedCount),
     0
@@ -292,6 +297,7 @@ export default function FarmClientShell({ contacts }: Props) {
               liveSummaryCounts={liveSummaryCounts}
               onManualConfirmed={handleManualConfirmed}
               onSummarySubmitted={handleSummarySubmitted}
+              onDirectFeedCreated={handleDirectFeedCreated}
               openModalContactId={openModalContactId}
               onModalOpened={() => setOpenModalContactId(null)}
               onDraftCleared={(id) => setDraftContactIds(prev => {
