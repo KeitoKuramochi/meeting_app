@@ -65,7 +65,7 @@ export default async function RequestPage({ params }: Props) {
         </Link>
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-bold truncate" style={{ color: '#f5e6a3' }}>
-            {data.contact_name}さんへリクエスト
+            {data.contact_name}さんに種をまく
           </h1>
           {confirmedCount > 0 ? (
             <p className="text-xs" style={{ color: '#c8e6a3' }}>
@@ -73,7 +73,7 @@ export default async function RequestPage({ params }: Props) {
             </p>
           ) : (
             <p className="text-xs" style={{ color: '#c8e6a3' }}>
-              はじめてのリクエストです
+              はじめての種まきです
             </p>
           )}
         </div>

@@ -87,11 +87,12 @@ function DurationPicker({
             key={value}
             type="button"
             onClick={() => onPresetChange(value)}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+            className="rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+            style={
               selectedPreset === value
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-            }`}
+                ? { border: '2px solid #d4a030', background: '#fef3c7', color: '#92400e' }
+                : { border: '1.5px solid #c8953a', background: '#fffdf7', color: '#6b4c0a' }
+            }
           >
             {label}
           </button>
@@ -107,11 +108,12 @@ function DurationPicker({
               value={customMinutes}
               onChange={(e) => onCustomChange(e.target.value)}
               placeholder="例：45"
-              className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-24 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
             />
-            <span className="text-sm text-gray-600">分</span>
+            <span className="text-sm" style={{ color: '#6b4c0a' }}>分</span>
           </div>
-          <p className="mt-1 text-xs text-gray-500">1〜480分（最大8時間）</p>
+          <p className="mt-1 text-xs" style={{ color: '#8b6914' }}>1〜480分（最大8時間）</p>
         </div>
       )}
     </div>
@@ -194,18 +196,18 @@ export default function CandidateList({
       : null
     const displayNote = confirmedNote || null
     return (
-      <div className="rounded-xl border border-green-200 bg-green-50 p-5">
-        <p className="mb-2 text-base font-semibold text-green-800">
+      <div className="rounded-xl p-5" style={{ border: '1.5px solid #6ee7b7', background: '#d1fae5' }}>
+        <p className="mb-2 text-base font-semibold" style={{ color: '#065f46' }}>
           ミーティングが確定しました！
         </p>
-        <p className="mb-1 text-sm text-green-700">
+        <p className="mb-1 text-sm" style={{ color: '#047857' }}>
           {formatCandidate(confirmedCandidate)}
         </p>
         {displayDuration && (
-          <p className="mb-1 text-sm text-green-700">所要時間: {displayDuration}</p>
+          <p className="mb-1 text-sm" style={{ color: '#047857' }}>所要時間: {displayDuration}</p>
         )}
         {displayNote && (
-          <p className="text-sm text-green-700">備考: {displayNote}</p>
+          <p className="text-sm" style={{ color: '#047857' }}>備考: {displayNote}</p>
         )}
       </div>
     )
@@ -351,11 +353,12 @@ export default function CandidateList({
           return (
             <label
               key={index}
-              className={`flex cursor-pointer items-center gap-3 rounded-lg border p-4 transition-colors ${
+              className="flex cursor-pointer items-center gap-3 rounded-lg p-4 transition-colors"
+              style={
                 isSelected
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-              }`}
+                  ? { border: '2px solid #d4a030', background: '#fef7e4' }
+                  : { border: '1.5px solid #c8953a', background: '#fffdf7' }
+              }
             >
               <input
                 type="radio"
@@ -366,9 +369,10 @@ export default function CandidateList({
                   setSelectedIndex(index)
                   setErrorMessage('')
                 }}
-                className="h-5 w-5 flex-shrink-0 accent-blue-600"
+                className="h-5 w-5 flex-shrink-0"
+                style={{ accentColor: '#2a5c1e' }}
               />
-              <span className="text-base text-gray-800">
+              <span className="text-base" style={{ color: '#2c1a0e' }}>
                 {formatCandidate(candidate)}
               </span>
             </label>
@@ -378,8 +382,8 @@ export default function CandidateList({
 
       {/* 所要時間選択 */}
       <div className="mb-4">
-        <p className="mb-2 text-sm font-medium text-gray-700">
-          所要時間 <span className="text-red-500">*</span>
+        <p className="mb-2 text-sm font-medium" style={{ color: '#3d2b0e' }}>
+          所要時間 <span style={{ color: '#b91c1c' }}>*</span>
         </p>
         <DurationPicker
           selectedPreset={durationPreset}
@@ -396,7 +400,8 @@ export default function CandidateList({
       <div className="mb-4">
         <label
           htmlFor="confirm-note"
-          className="mb-1 block text-sm font-medium text-gray-700"
+          className="mb-1 block text-sm font-medium"
+          style={{ color: '#3d2b0e' }}
         >
           備考（任意）
         </label>
@@ -406,13 +411,15 @@ export default function CandidateList({
           value={confirmNote}
           onChange={(e) => setConfirmNote(e.target.value)}
           placeholder="ご質問や確認事項があればご記入ください"
-          className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
         />
       </div>
 
       {errorMessage && (
         <p
-          className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+          className="mb-3 rounded-lg px-4 py-3 text-sm"
+          style={{ border: '1px solid #fca5a5', background: '#fef2f2', color: '#b91c1c' }}
           role="alert"
         >
           {errorMessage}
@@ -420,7 +427,7 @@ export default function CandidateList({
       )}
 
       {showAlternativeForm && (
-        <p className="mb-3 text-sm text-center text-gray-500">
+        <p className="mb-3 text-sm text-center" style={{ color: '#8b6914' }}>
           別日提案フォームを閉じてから確定できます
         </p>
       )}
@@ -429,7 +436,7 @@ export default function CandidateList({
         type="button"
         onClick={handleConfirm}
         disabled={isSubmitting || showAlternativeForm}
-        className="mb-4 flex h-12 w-full items-center justify-center rounded-lg bg-blue-600 text-base font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        className="farm-btn mb-4 flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? '確定中...' : '確定する'}
       </button>
@@ -441,13 +448,14 @@ export default function CandidateList({
             <button
               type="button"
               onClick={() => setShowAlternativeForm(true)}
-              className="w-full rounded-lg border border-gray-300 bg-white py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="w-full rounded-xl py-3 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              style={{ border: '2px solid #c8953a', color: '#4a8c5c', background: '#fef7e4' }}
             >
               別の日を提案する
             </button>
           ) : (
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
-              <h3 className="mb-4 text-sm font-semibold text-gray-800">
+            <div className="farm-card p-5">
+              <h3 className="mb-4 text-sm font-semibold" style={{ color: '#2c1a0e' }}>
                 別の日を提案する
               </h3>
 
@@ -456,15 +464,17 @@ export default function CandidateList({
                 {altCandidates.map((altC, altIdx) => (
                   <div
                     key={altIdx}
-                    className="rounded-lg border border-gray-200 p-3 space-y-2"
+                    className="rounded-lg p-3 space-y-2"
+                    style={{ border: '1.5px solid #d4a853', background: '#fef7e4' }}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-gray-600">候補 {altIdx + 1}</span>
+                      <span className="text-xs font-medium" style={{ color: '#3d2b0e' }}>候補 {altIdx + 1}</span>
                       {altCandidates.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeAltCandidate(altIdx)}
-                          className="text-xs text-red-500 hover:text-red-700 focus:outline-none"
+                          className="text-xs rounded focus:outline-none focus:ring-2 focus:ring-red-400"
+                          style={{ color: '#b91c1c' }}
                         >
                           削除
                         </button>
@@ -477,14 +487,16 @@ export default function CandidateList({
                       min={getTodayString()}
                       value={altC.date}
                       onChange={(e) => updateAltDate(altIdx, e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                      style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
                     />
 
                     {/* 時間 */}
                     <select
                       value={altC.time}
                       onChange={(e) => updateAltTime(altIdx, e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                      style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
                     >
                       <option value="">時間を選択</option>
                       {TIME_OPTIONS.map((t) => (
@@ -499,7 +511,8 @@ export default function CandidateList({
                 <button
                   type="button"
                   onClick={addAltCandidate}
-                  className="mb-4 flex h-9 w-full items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 focus:outline-none"
+                  className="mb-4 flex h-9 w-full items-center justify-center gap-1 rounded-xl border-2 border-dashed text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
+                  style={{ borderColor: '#c8953a', color: '#4a8c5c' }}
                 >
                   ＋ 候補日を追加
                 </button>
@@ -507,8 +520,8 @@ export default function CandidateList({
 
               {/* 所要時間 */}
               <div className="mb-4">
-                <p className="mb-2 text-sm font-medium text-gray-700">
-                  所要時間 <span className="text-red-500">*</span>
+                <p className="mb-2 text-sm font-medium" style={{ color: '#3d2b0e' }}>
+                  所要時間 <span style={{ color: '#b91c1c' }}>*</span>
                 </p>
                 <DurationPicker
                   selectedPreset={altDurationPreset}
@@ -525,7 +538,8 @@ export default function CandidateList({
               <div className="mb-4">
                 <label
                   htmlFor="alt-note"
-                  className="mb-1 block text-sm font-medium text-gray-700"
+                  className="mb-1 block text-sm font-medium"
+                  style={{ color: '#3d2b0e' }}
                 >
                   備考（任意）
                 </label>
@@ -535,13 +549,15 @@ export default function CandidateList({
                   value={altNote}
                   onChange={(e) => setAltNote(e.target.value)}
                   placeholder="提案理由などがあればご記入ください"
-                  className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
                 />
               </div>
 
               {altErrorMessage && (
                 <p
-                  className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+                  className="mb-3 rounded-lg px-4 py-3 text-sm"
+                  style={{ border: '1px solid #fca5a5', background: '#fef2f2', color: '#b91c1c' }}
                   role="alert"
                 >
                   {altErrorMessage}
@@ -553,7 +569,7 @@ export default function CandidateList({
                   type="button"
                   onClick={handleAltSubmit}
                   disabled={isAltSubmitting}
-                  className="flex h-11 flex-1 items-center justify-center rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="farm-btn flex h-11 flex-1 items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isAltSubmitting ? '送信中...' : '返信する'}
                 </button>
@@ -563,7 +579,8 @@ export default function CandidateList({
                     setShowAlternativeForm(false)
                     setAltErrorMessage('')
                   }}
-                  className="flex h-11 flex-1 items-center justify-center rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  className="flex h-11 flex-1 items-center justify-center rounded-xl text-sm font-medium focus:outline-none transition-colors"
+                  style={{ border: '1.5px solid #d4a853', color: '#6b4c0a', background: '#fffdf7' }}
                 >
                   キャンセル
                 </button>
@@ -574,17 +591,17 @@ export default function CandidateList({
       )}
 
       {altSubmitted && (
-        <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 p-5">
-          <p className="text-base font-semibold text-blue-800">
+        <div className="mt-2 rounded-xl p-5" style={{ border: '1px solid #bfdbfe', background: '#eff6ff' }}>
+          <p className="text-base font-semibold" style={{ color: '#1e40af' }}>
             提案を送りました
           </p>
-          <p className="mt-1 text-sm text-blue-700">
+          <p className="mt-1 text-sm" style={{ color: '#1d4ed8' }}>
             別日の提案が送信されました。相手の返答をお待ちください。
           </p>
           {sentAltCandidates.length > 0 && (
             <ul className="mt-3 space-y-1">
               {sentAltCandidates.map((c, i) => (
-                <li key={i} className="text-sm text-blue-800">
+                <li key={i} className="text-sm" style={{ color: '#1e40af' }}>
                   ・{formatCandidate(c)}
                 </li>
               ))}

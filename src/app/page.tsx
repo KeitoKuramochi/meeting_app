@@ -21,11 +21,14 @@ export default async function TopPage({ searchParams }: Props) {
         {/* Logo */}
         <div className="text-center">
           <div className="text-7xl mb-3" role="img" aria-label="農場">🌾</div>
-          <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#1a3d12', textShadow: '0 1px 0 rgba(255,255,255,0.5)' }}>
+          <h1 className="font-farm-title text-3xl tracking-tight" style={{ color: '#1a3d12', textShadow: '0 1px 0 rgba(255,255,255,0.5)' }}>
             のうえん<wbr />ミーティング
           </h1>
           <p className="mt-2 text-sm font-semibold" style={{ color: '#4a7c59' }}>
-            日程調整を、農園ゲームにしよう
+            ミーティングは、肥料になる。
+          </p>
+          <p className="mt-0.5 text-xs font-medium" style={{ color: '#8b6914' }}>
+            話すほど、なかまが育つ農園ゲーム
           </p>
         </div>
 
@@ -33,9 +36,9 @@ export default async function TopPage({ searchParams }: Props) {
         <div className="w-full rounded-2xl p-4 space-y-3" style={{ background: '#fef7e4', border: '2px solid #c8953a' }}>
           <p className="text-xs font-bold uppercase tracking-wide text-center" style={{ color: '#8b6914' }}>できること</p>
           {[
-            { emoji: '🐾', text: '相手をキャラとして農園に登録' },
-            { emoji: '📅', text: 'URLを送るだけで日程を確定' },
-            { emoji: '🏆', text: '要約を記録するとキャラが成長する' },
+            { emoji: '🐾', text: 'なかまをキャラとして農園に迎える' },
+            { emoji: '🌱', text: 'URLを送るだけで種をまき、日程を確定' },
+            { emoji: '🌾', text: 'ミーティングという肥料をあげてキャラを育てる' },
           ].map(({ emoji, text }) => (
             <div key={text} className="flex items-center gap-3 py-1">
               <span className="text-xl shrink-0">{emoji}</span>

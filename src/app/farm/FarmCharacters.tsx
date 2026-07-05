@@ -672,9 +672,9 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
           >
             {/* ヘッダー */}
             <div className="px-5 pt-4 pb-3 text-center shrink-0 farm-header">
-              <h2 className="text-base font-bold"
+              <h2 className="font-farm-title text-base"
                 style={{ color: '#f5e6a3' }}>
-                {contact.contact_name}のリクエスト
+                {contact.contact_name}の畑
               </h2>
             </div>
 
@@ -741,7 +741,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                 </div>
               ) : historyItems.length === 0 ? (
                 <div className="py-8 text-center text-sm" style={{ color: '#8b6914' }}>
-                  まだリクエストがありません
+                  まだ種をまいていません
                 </div>
               ) : (
                 historyItems.map(item => {
@@ -964,7 +964,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                             </div>
                           )}
                           <div className="rounded-lg px-2.5 py-1.5 text-xs" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
-                            <p style={{ color: '#78350f' }}>💡 チャットで合意した日時で確定するか、新しいリクエストを作成して別の候補を送れます</p>
+                            <p style={{ color: '#78350f' }}>💡 チャットで合意した日時で確定するか、新しく種をまいて別の候補を送れます</p>
                           </div>
                           <button
                             type="button"
@@ -1019,7 +1019,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                     </svg>
                     移動中...
                   </span>
-                ) : '新しいリクエストを送る'}
+                ) : '🌱 新しい種をまく'}
               </button>
               <button
                 type="button"
@@ -1062,7 +1062,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
         onClick={handleClick}
         role="button"
         tabIndex={0}
-        aria-label={`${contact.contact_name}のリクエスト履歴を見る`}
+        aria-label={`${contact.contact_name}の畑を見る`}
         onKeyDown={e => {
           if (e.key === 'Enter' || e.key === ' ') {
             openHistoryModal()

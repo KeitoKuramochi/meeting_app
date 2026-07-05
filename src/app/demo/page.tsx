@@ -78,7 +78,7 @@ export default function DemoPage() {
       <header className="flex items-center justify-between px-4 py-3 shrink-0 farm-header" style={{ position: 'sticky', top: 0, zIndex: 40 }}>
         <div className="flex items-center gap-2">
           <span className="text-xl" aria-hidden="true">🌾</span>
-          <h1 className="text-base font-extrabold" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+          <h1 className="font-farm-title text-base" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
             のうえんミーティング
           </h1>
         </div>
@@ -132,10 +132,10 @@ export default function DemoPage() {
         <div className="rounded-xl px-4 py-3 text-sm" style={{ background: '#fef7e4', border: '1.5px solid #d4a853' }}>
           <p className="font-semibold mb-1" style={{ color: '#3d2b0e' }}>デモモードについて</p>
           <ul className="space-y-1" style={{ color: '#6b4c0a' }}>
-            <li>・ミーティングが確定するたびにキャラが成長します</li>
+            <li>・ミーティングという肥料をあげるたびにキャラが成長します</li>
             <li>・3回以上でキラキラ、4回以上でハートエフェクトが付きます</li>
-            <li>・一番確定回数が多い人に王冠がつきます 👑</li>
-            <li>・リクエスト送信・日程調整はログイン後にご利用いただけます</li>
+            <li>・一番育っている子に王冠がつきます 👑</li>
+            <li>・種まき（日程調整）はログイン後にご利用いただけます</li>
           </ul>
         </div>
       </main>

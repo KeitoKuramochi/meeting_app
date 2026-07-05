@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Yomogi, Zen_Maru_Gothic } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,9 +12,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// 見出し用：手書き風で温かみのある農園日記のようなフォント
+const yomogi = Yomogi({
+  variable: "--font-yomogi",
+  weight: "400",
+  subsets: ["latin"],
+  preload: false,
+});
+
+// 本文用：読みやすい丸ゴシック
+const zenMaruGothic = Zen_Maru_Gothic({
+  variable: "--font-zen-maru",
+  weight: ["400", "500", "700", "900"],
+  subsets: ["latin"],
+  preload: false,
+});
+
 export const metadata: Metadata = {
-  title: "ミーティング調整 | だれとでもミーティング調整をかんたんに",
-  description: "候補日を送るだけで相手がワンクリックで確定できる日程調整アプリ",
+  title: "のうえんミーティング | ミーティングを肥料に、なかまを育てる",
+  description: "URLを送るだけの日程調整。ミーティングを重ねるほど、農園のなかまが育っていく",
 };
 
 export default function RootLayout({
@@ -25,7 +41,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${yomogi.variable} ${zenMaruGothic.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

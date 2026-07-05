@@ -227,7 +227,7 @@ export default function FarmClientShell({ contacts }: Props) {
       >
         <div className="flex items-center gap-2">
           <span className="text-xl" aria-hidden="true">🌾</span>
-          <h1 className="text-base font-extrabold" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+          <h1 className="font-farm-title text-base" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
             のうえんミーティング
           </h1>
         </div>
@@ -236,7 +236,7 @@ export default function FarmClientShell({ contacts }: Props) {
             href="/farm/add"
             className="farm-btn-gold h-9 px-3 flex items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
-            ＋ 追加
+            ＋ なかま
           </Link>
           <button
             type="button"
@@ -319,13 +319,13 @@ export default function FarmClientShell({ contacts }: Props) {
                   農園はまだからっぽです
                 </h2>
                 <p className="text-sm mb-4" style={{ color: '#6b4c0a' }}>
-                  「＋ 追加」ボタンから相手を登録すると、キャラクターが農園に住みはじめます
+                  「＋ なかま」ボタンから登録すると、キャラクターが農園に住みはじめます
                 </p>
                 <Link
                   href="/farm/add"
                   className="farm-btn inline-flex items-center gap-1.5 px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 >
-                  ＋ 相手を追加する
+                  ＋ なかまを迎える
                 </Link>
                 <Link
                   href="/guide"
@@ -341,7 +341,7 @@ export default function FarmClientShell({ contacts }: Props) {
 
         {contacts.length > 0 && (
           <p className="text-center text-xs" style={{ color: '#8b6914' }}>
-            キャラをタップするとリクエスト一覧が開きます ✨
+            キャラをタップすると、その子の畑が開きます ✨
           </p>
         )}
       </main>
@@ -402,7 +402,7 @@ export default function FarmClientShell({ contacts }: Props) {
                 onClick={() => setShowList(false)}
                 className="farm-btn flex h-11 w-full items-center justify-center gap-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
               >
-                ＋ 相手を追加する
+                ＋ なかまを迎える
               </Link>
             </div>
           </div>

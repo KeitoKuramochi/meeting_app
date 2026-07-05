@@ -292,7 +292,7 @@ export default function DemoFarmCharacters({ contacts }: Props) {
   const positionsRef = useRef<({ x: number; y: number } | null)[]>([])
 
   const handleTap = useCallback(() => {
-    setToastMessage('デモモードではリクエストは送れません。ログインして本格利用しましょう！')
+    setToastMessage('デモモードでは種をまけません。ログインして本格的に育てましょう！')
   }, [])
 
   const handleToastClose = useCallback(() => setToastMessage(null), [])

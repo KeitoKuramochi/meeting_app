@@ -173,7 +173,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
       <div className="farm-card p-6 space-y-4">
         <div className="text-center">
           <div className="mb-2 text-5xl" role="img" aria-label="完了">🎉</div>
-          <h2 className="text-lg font-bold" style={{ color: '#2c1a0e' }}>
+          <h2 className="font-farm-title text-lg" style={{ color: '#2c1a0e' }}>
             URLをコピーしました！
           </h2>
           <p className="mt-1 text-sm" style={{ color: '#8b6914' }}>
@@ -214,25 +214,25 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
       <div className="farm-card p-6 space-y-4">
         <div className="text-center">
           <div className="mb-2 text-5xl" role="img" aria-label="完了">✅</div>
-          <h2 className="text-lg font-bold" style={{ color: '#2c1a0e' }}>
-            リクエストを作成しました！
+          <h2 className="font-farm-title text-lg" style={{ color: '#2c1a0e' }}>
+            種をまきました！
           </h2>
           <p className="mt-1 text-sm" style={{ color: '#8b6914' }}>
             {confirmedCount === 0
-              ? `${contactName}さんとはじめてのリクエストです`
-              : `${contactName}さんとは今まで${confirmedCount}回確定済み。今回が${nextCount}回目のリクエストです`}
+              ? `${contactName}さんへ、はじめての種まきです`
+              : `${contactName}さんとは今まで${confirmedCount}回確定済み。今回が${nextCount}回目の種まきです`}
           </p>
         </div>
 
         <div className="rounded-xl px-4 py-3" style={{ border: '1.5px solid #d4a853', background: '#fef7e4' }}>
-          <p className="mb-1 text-xs font-semibold" style={{ color: '#8b6914' }}>送付URL</p>
+          <p className="mb-1 text-xs font-semibold" style={{ color: '#8b6914' }}>種まき用URL</p>
           <p className="break-all text-sm font-mono" style={{ color: '#2c1a0e' }}>
             {submittedInfo.url}
           </p>
         </div>
 
         <p className="text-sm font-semibold text-center" style={{ color: '#3d2b0e' }}>
-          今すぐ{contactName}さんに送りますか？
+          今すぐ{contactName}さんに種を送りますか？
         </p>
 
         <div className="flex flex-col gap-3">
@@ -241,7 +241,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
             onClick={handleSendNow}
             className="farm-btn flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400"
           >
-            今送る（URLをコピー）
+            今まく（URLをコピー）
           </button>
 
           <button
@@ -250,7 +250,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
             className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
             style={{ border: '2px solid #c8953a', color: '#4a8c5c', background: '#fef7e4' }}
           >
-            後で送る（農園に戻る）
+            あとでまく（農園に戻る）
           </button>
         </div>
       </div>
@@ -443,7 +443,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
         disabled={isSubmitting}
         className="farm-btn flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {isSubmitting ? '送信中...' : 'リクエストを送る'}
+        {isSubmitting ? 'まいています...' : '🌱 種をまく'}
       </button>
     </form>
   )

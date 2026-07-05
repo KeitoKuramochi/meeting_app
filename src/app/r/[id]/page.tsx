@@ -22,10 +22,10 @@ export default async function ReviewPage({ params }: Props) {
         <div className="mx-auto max-w-lg">
           <div className="rounded-2xl p-6 text-center" style={{ background: '#fef7e4', border: '2px solid #fca5a5' }}>
             <p className="mb-2 text-lg font-semibold" style={{ color: '#b91c1c' }}>
-              リクエストが見つかりません
+              ページが見つかりません
             </p>
             <p className="mb-6 text-sm" style={{ color: '#6b4c0a' }}>
-              URLが正しくないか、リクエストが削除された可能性があります。<br />
+              URLが正しくないか、ミーティングの予定が削除された可能性があります。<br />
               リンクを送ってくれた方にご確認ください。
             </p>
             <Link
@@ -51,7 +51,7 @@ export default async function ReviewPage({ params }: Props) {
         <span className="text-xl" aria-hidden="true">🌾</span>
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-bold truncate" style={{ color: '#f5e6a3' }}>
-            面談リクエストの確認
+            ミーティング日程のご確認
           </h1>
           {isConfirmed && (
             <p className="text-xs" style={{ color: '#c8e6a3' }}>確定済みです</p>

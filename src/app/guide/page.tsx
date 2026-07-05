@@ -8,7 +8,7 @@ export default function GuidePage() {
       >
         <div className="flex items-center gap-2">
           <span className="text-xl" aria-hidden="true">🌾</span>
-          <span className="text-base font-extrabold" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+          <span className="font-farm-title text-base" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
             のうえんミーティング
           </span>
         </div>
@@ -23,11 +23,11 @@ export default function GuidePage() {
       <main className="flex-1 w-full max-w-lg mx-auto px-4 py-8 flex flex-col gap-10">
         {/* Hero */}
         <section className="text-center pt-2">
-          <h1 className="text-2xl font-extrabold mb-3" style={{ color: '#2c1a0e' }}>
+          <h1 className="font-farm-title text-2xl mb-3" style={{ color: '#2c1a0e' }}>
             のうえんミーティングの使い方
           </h1>
           <p className="text-sm font-medium" style={{ color: '#8b6914' }}>
-            日程調整を農園ゲームにして、もっと楽しく・かんたんに。
+            ミーティングという名の肥料で、なかまを育てよう。
           </p>
         </section>
 
@@ -40,10 +40,10 @@ export default function GuidePage() {
             >
               1
             </span>
-            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>相手を農園に追加する</h2>
+            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>なかまを農園に迎える</h2>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: '#3d2b0e' }}>
-            ヘッダーの「＋ 追加」ボタンから相手の名前とキャラクターを選んで登録します。
+            ヘッダーの「＋ なかま」ボタンから名前とキャラクターを選んで登録します。
             キャラクターは全部で選び放題！お気に入りを選んでください。
           </p>
           <div className="flex items-center justify-center gap-4">
@@ -73,7 +73,7 @@ export default function GuidePage() {
           </div>
           <p className="text-sm leading-relaxed" style={{ color: '#3d2b0e' }}>
             登録したキャラクターは農園の中をうろうろ動き回ります。
-            ドラッグして移動させ、タップするとリクエスト画面が開きます。
+            ドラッグして移動させ、タップするとその子の畑が開きます。
           </p>
           <div
             className="flex items-center justify-center rounded-xl"
@@ -125,11 +125,11 @@ export default function GuidePage() {
             >
               3
             </span>
-            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>リクエストフォームに入力する</h2>
+            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>種まきフォームに入力する</h2>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: '#3d2b0e' }}>
-            名前・相談内容・希望日程を入力すると送付用URLが生成されます。
-            そのURLを相手に送るだけで日程調整が始まります。
+            名前・相談内容・希望日程を入力すると種まき用URLが生成されます。
+            そのURLをなかまに送るだけで日程調整が始まります。
           </p>
           {/* モックフォーム */}
           <div
@@ -168,7 +168,7 @@ export default function GuidePage() {
               className="rounded-lg px-3 py-2 text-sm font-semibold text-center"
               style={{ background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7' }}
             >
-              送付URLが生成されます ✅
+              種まき用URLが生成されます ✅
             </div>
           </div>
         </section>
@@ -182,10 +182,10 @@ export default function GuidePage() {
             >
               4
             </span>
-            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>相手がURLを開いて日程を選ぶ</h2>
+            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>なかまがURLを開いて日程を選ぶ</h2>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: '#3d2b0e' }}>
-            相手はアカウント登録なし・ログイン不要でURLを開くだけ。
+            なかまはアカウント登録なし・ログイン不要でURLを開くだけ。
             候補日程の中からひとつ選んで「確定する」を押せば完了です。
           </p>
           {/* モックUI */}
@@ -230,7 +230,7 @@ export default function GuidePage() {
               className="flex items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold self-center"
               style={{ background: '#fef3c7', border: '1px solid #d97706', color: '#92400e' }}
             >
-              🔓 相手はログイン不要で返信できます
+              🔓 なかまはログイン不要で返信できます
             </div>
           </div>
         </section>
@@ -244,11 +244,11 @@ export default function GuidePage() {
             >
               5
             </span>
-            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>ミーティング後に要約を記録するとキャラが成長する</h2>
+            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>ミーティングという肥料をあげてキャラを育てる</h2>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: '#3d2b0e' }}>
-            ミーティングが終わったら要約を記録しましょう。
-            提出するたびにキャラクターがどんどん大きく育ちます。
+            ミーティングが終わったら、肥料（要約）をあげましょう。
+            あげるたびにキャラクターがどんどん大きく育ちます。
           </p>
           <div className="flex items-end justify-center gap-8 py-4">
             {/* 小 */}
@@ -307,7 +307,7 @@ export default function GuidePage() {
         <section
           className="farm-header rounded-2xl p-8 flex flex-col items-center gap-5 text-center"
         >
-          <p className="text-xl font-extrabold" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+          <p className="font-farm-title text-xl" style={{ color: '#f5e6a3', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
             さあ、農園をはじめよう 🌾
           </p>
           <a
