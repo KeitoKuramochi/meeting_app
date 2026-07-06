@@ -56,7 +56,8 @@ async function summarizeWithCloudflareWorkersAI(prompt: string): Promise<string>
         Authorization: `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ prompt }),
+      // 単純な prompt フィールドだと指示に従わないことがあるため、chat形式の messages で送る
+      body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] }),
     }
   )
   const data = (await res.json()) as CloudflareWorkersAiResponse

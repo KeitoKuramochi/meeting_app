@@ -25,6 +25,16 @@
 > ここだけ読めば「これまで何があったか・今どういう状態か・次に何をすべきか」が分かる状態を保つこと。
 > フォーマット: `### YYYY-MM-DD セッション種別 — 一言タイトル` の見出し＋箇条書き（やったこと／分かったこと／次にやること）。
 
+### 2026-07-06 動作確認・不具合修正 — Cloudflare Workers AIの認証情報を設定・検証、リクエスト形式のバグを修正
+- ユーザーがCloudflareダッシュボードでAccount ID・Workers AI用APIトークンを発行し`.env.local`に設定。手順は「Workers AI」ページ右上の「REST API」→「Create a Workers AI API Token」の専用フローを案内した
+- 設定後、`.env.local`の値を私からは見ずに存在確認（`grep -c`）した上で、実際にCloudflare Workers AIへ直接テストリクエストを送って動作検証（値は開示していない）
+  - 単純なプロンプト（`{"prompt": "..."}`形式）でテストしたところ、指示を無視してCのプログラムを書き出すという妙な応答が返り、原因を切り分けるため実際のミーティング文字起こしに近いサンプルで再テスト
+  - 原因は`prompt`という単純なフィールドで送っていたことだと判明。chat形式の`messages`配列で送ったところ、日本語の要約タスクに正しく従うことを確認（`@cf/meta/llama-3.1-8b-instruct`で日程・決定事項・次アクションを含む適切な要約が返った）
+  - `src/lib/summarize.ts`の`summarizeWithCloudflareWorkersAI`を`{ prompt }`から`{ messages: [{ role: 'user', content: prompt }] }`に修正
+- `npm run build`成功
+- これでGemini → Cloudflare Workers AI → Claude Haikuの3段フォールバックが実際に機能する状態になった
+- 次にやること: 人間が実機で要約提出を試し、正常に動くか確認 → Vercel本番環境にも`CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN`を設定
+
 ### 2026-07-06 不具合調査・機能追加 — Gemini 503は既知のGoogle側障害と判明、Cloudflare Workers AIを第2フォールバックに追加
 - ユーザーが「わざとANTHROPIC_API_KEYを外したら要約生成がGemini・Claudeともに失敗した」と報告。「こっちでジェミニ動いてるのかな」という疑問も出ていたため、実際に同じプロンプト・入力でGemini APIを直接叩いて原因を再現・特定した
 - 原因はGemini側の`503 UNAVAILABLE: This model is currently experiencing high demand`。ユーザーが貼った2つの記事（Gemini APIキー形式の`AIza`→`AQ.`移行に関する記事）はこの503とは無関係だったが、念のためキー形式を確認したところ既に新形式（`AQ.`）であることを確認。WebSearchでGoogle公式フォーラム・GitHub issueを調査し、この503は2026年時点でGoogle側インフラの既知の広範な問題（新モデルリリース時などにピーク失敗率5割近くの報告あり）であり、「フォールバックで凌ぐ」のが公式に推奨される対処法だと確認できた
