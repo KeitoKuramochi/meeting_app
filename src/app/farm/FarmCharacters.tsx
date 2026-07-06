@@ -570,6 +570,45 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
     setSummaryFormItemId(null)
   }
 
+  // 編集時: AIを呼ばず、手を入れたメモ・質問への回答だけをそのまま保存する（既存の要約文はそのまま）
+  async function handleSaveNotesOnly(meetingId: string) {
+    if (!canSubmitSummary) return
+    setSummarySubmitError(null)
+    setIsSubmittingSummary(true)
+    try {
+      const summaryRawInput =
+        summaryTab === 'transcript' ? summaryTranscriptText.trim() : summaryMemoText.trim()
+      const summaryQa =
+        summaryTab === 'memo_qa'
+          ? SUMMARY_REFERENCE_QUESTIONS.map((question, i) => ({
+              question,
+              answer: summaryQaAnswers[i] ?? '',
+            }))
+          : null
+      const supabase = getSupabase()
+      const { error } = await supabase
+        .from('meetings')
+        .update({ summary_raw_input: summaryRawInput, summary_qa: summaryQa })
+        .eq('id', meetingId)
+      if (error) {
+        setSummarySubmitError('保存に失敗しました。もう一度お試しください')
+        return
+      }
+      setHistoryItems(prev =>
+        prev.map(item =>
+          item.id === meetingId
+            ? { ...item, summary_raw_input: summaryRawInput, summary_qa: summaryQa }
+            : item
+        )
+      )
+      closeSummaryForm()
+    } catch {
+      setSummarySubmitError('保存に失敗しました。もう一度お試しください')
+    } finally {
+      setIsSubmittingSummary(false)
+    }
+  }
+
   // 「肥料をあげる」: 内容を書く前にレコードを作らず、まず入力フォームだけを開く
   // （内容が空の記録がどんどん保存されるのを防ぐため、実際の保存は提出時の1回のみ）
   function openDirectFeedForm() {
@@ -679,7 +718,9 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
   }
 
   // 要約入力フォームの中身（既存記録への追記／「肥料をあげる」の新規記録、両方で共有する）
-  function renderSummaryFormFields(onSubmit: () => void, onCancel: () => void) {
+  function renderSummaryFormFields(onSubmit: () => void, onCancel: () => void, onSaveNotesOnly?: () => void) {
+    // 「内容だけ保存」は既存の要約を編集する場合のみ意味を持つ（貼り付けモードは元々AIを使わない）
+    const canSaveNotesOnly = onSaveNotesOnly !== undefined && summaryTab !== 'pasted'
     return (
       <div className="rounded-lg p-2.5 space-y-2" style={{ background: '#fefce8', border: '1px solid #fde68a' }}>
         <div className="flex gap-1">
@@ -768,7 +809,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
           >
             {isSubmittingSummary
               ? (summaryTab === 'pasted' ? '送信中...' : 'AIが要約中...')
-              : '要約を提出する'}
+              : (canSaveNotesOnly ? '🔄 AIで要約を作り直す' : '要約を提出する')}
           </button>
           <button
             type="button"
@@ -779,6 +820,17 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
             キャンセル
           </button>
         </div>
+        {canSaveNotesOnly && (
+          <button
+            type="button"
+            onClick={onSaveNotesOnly}
+            disabled={isSubmittingSummary || !canSubmitSummary}
+            className="flex h-9 w-full items-center justify-center rounded-lg text-xs font-medium focus:outline-none transition-colors disabled:opacity-60"
+            style={{ border: '1.5px solid #d4a853', color: '#6b4c0a', background: '#fffdf7' }}
+          >
+            💾 内容だけ保存する（要約はそのまま）
+          </button>
+        )}
       </div>
     )
   }
@@ -989,7 +1041,11 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                         </button>
                       )}
                       {summaryFormItemId === item.id &&
-                        renderSummaryFormFields(() => handleSummarySubmit(item.id), closeSummaryForm)}
+                        renderSummaryFormFields(
+                          () => handleSummarySubmit(item.id),
+                          closeSummaryForm,
+                          item.summary_submitted_at ? () => handleSaveNotesOnly(item.id) : undefined
+                        )}
 
                       {/* 返信あり: 別日提案内容 + アクションボタン */}
                       {hasReply && (

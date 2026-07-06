@@ -18,7 +18,24 @@ function buildQaPrompt(memo: string, qa: QAPair[]): string {
   return `以下はミーティング後のメモと、内容を振り返るための質問への回答です。次回のミーティング前にすぐ見返せるように、話した内容・決まったこと・次のアクションを中心に簡潔な要約にまとめてください。\n\n${memoText}${qaText}`
 }
 
-// メイン: Claude Haiku
+// メイン: Gemini（無料枠があるため、通常の要約生成はこちらを優先する）
+async function summarizeWithGemini(prompt: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY が設定されていません')
+  }
+  const ai = new GoogleGenAI({ apiKey })
+  const response = await ai.models.generateContent({
+    model: GEMINI_MODEL,
+    contents: prompt,
+  })
+  if (!response.text) {
+    throw new Error('Geminiからの要約生成に失敗しました')
+  }
+  return response.text
+}
+
+// フォールバック: Claude Haiku（Geminiが使えない・失敗した場合のみ使用）
 async function summarizeWithClaude(prompt: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -37,33 +54,16 @@ async function summarizeWithClaude(prompt: string): Promise<string> {
   return block.text
 }
 
-// フォールバック: Gemini（Claudeが使えない・失敗した場合のみ使用）
-async function summarizeWithGemini(prompt: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY が設定されていません')
-  }
-  const ai = new GoogleGenAI({ apiKey })
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: prompt,
-  })
-  if (!response.text) {
-    throw new Error('Geminiからの要約生成に失敗しました')
-  }
-  return response.text
-}
-
 async function generateSummary(prompt: string): Promise<string> {
   try {
-    return await summarizeWithClaude(prompt)
-  } catch (claudeError) {
-    console.error('[summarize] Claudeでの要約生成に失敗、Geminiにフォールバックします:', claudeError)
+    return await summarizeWithGemini(prompt)
+  } catch (geminiError) {
+    console.error('[summarize] Geminiでの要約生成に失敗、Claudeにフォールバックします:', geminiError)
     try {
-      return await summarizeWithGemini(prompt)
-    } catch (geminiError) {
-      console.error('[summarize] Geminiでの要約生成にも失敗しました:', geminiError)
-      throw new Error('要約の生成に失敗しました（Claude・Geminiともにエラー）')
+      return await summarizeWithClaude(prompt)
+    } catch (claudeError) {
+      console.error('[summarize] Claudeでの要約生成にも失敗しました:', claudeError)
+      throw new Error('要約の生成に失敗しました（Gemini・Claudeともにエラー）')
     }
   }
 }
