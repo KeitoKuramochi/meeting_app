@@ -4,6 +4,7 @@ import { QAPair } from '@/types/meeting'
 
 const CLAUDE_MODEL = 'claude-haiku-4-5'
 const GEMINI_MODEL = 'gemini-2.5-flash-lite'
+const CLOUDFLARE_MODEL = '@cf/meta/llama-3.1-8b-instruct'
 
 function buildTranscriptPrompt(rawText: string): string {
   return `以下はミーティングの文字起こしです。次回のミーティング前にすぐ見返せるように、話した内容・決まったこと・次のアクションを中心に簡潔に要約してください。\n\n---\n${rawText}`
@@ -35,7 +36,37 @@ async function summarizeWithGemini(prompt: string): Promise<string> {
   return response.text
 }
 
-// フォールバック: Claude Haiku（Geminiが使えない・失敗した場合のみ使用）
+type CloudflareWorkersAiResponse = {
+  success: boolean
+  result?: { response?: string }
+}
+
+// 第2フォールバック: Cloudflare Workers AI（無料枠 1日10,000 neurons。Geminiが失敗した場合に使用）
+async function summarizeWithCloudflareWorkersAI(prompt: string): Promise<string> {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN
+  if (!accountId || !apiToken) {
+    throw new Error('CLOUDFLARE_ACCOUNT_ID または CLOUDFLARE_API_TOKEN が設定されていません')
+  }
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${CLOUDFLARE_MODEL}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt }),
+    }
+  )
+  const data = (await res.json()) as CloudflareWorkersAiResponse
+  if (!res.ok || !data.success || !data.result?.response) {
+    throw new Error('Cloudflare Workers AIからの要約生成に失敗しました')
+  }
+  return data.result.response
+}
+
+// 最終フォールバック: Claude Haiku（Gemini・Cloudflare Workers AI両方が使えない・失敗した場合のみ使用）
 async function summarizeWithClaude(prompt: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -58,12 +89,17 @@ async function generateSummary(prompt: string): Promise<string> {
   try {
     return await summarizeWithGemini(prompt)
   } catch (geminiError) {
-    console.error('[summarize] Geminiでの要約生成に失敗、Claudeにフォールバックします:', geminiError)
+    console.error('[summarize] Geminiでの要約生成に失敗、Cloudflare Workers AIにフォールバックします:', geminiError)
     try {
-      return await summarizeWithClaude(prompt)
-    } catch (claudeError) {
-      console.error('[summarize] Claudeでの要約生成にも失敗しました:', claudeError)
-      throw new Error('要約の生成に失敗しました（Gemini・Claudeともにエラー）')
+      return await summarizeWithCloudflareWorkersAI(prompt)
+    } catch (cloudflareError) {
+      console.error('[summarize] Cloudflare Workers AIでの要約生成に失敗、Claudeにフォールバックします:', cloudflareError)
+      try {
+        return await summarizeWithClaude(prompt)
+      } catch (claudeError) {
+        console.error('[summarize] Claudeでの要約生成にも失敗しました:', claudeError)
+        throw new Error('要約の生成に失敗しました（Gemini・Cloudflare Workers AI・Claudeともにエラー）')
+      }
     }
   }
 }

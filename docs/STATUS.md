@@ -25,6 +25,15 @@
 > ここだけ読めば「これまで何があったか・今どういう状態か・次に何をすべきか」が分かる状態を保つこと。
 > フォーマット: `### YYYY-MM-DD セッション種別 — 一言タイトル` の見出し＋箇条書き（やったこと／分かったこと／次にやること）。
 
+### 2026-07-06 不具合調査・機能追加 — Gemini 503は既知のGoogle側障害と判明、Cloudflare Workers AIを第2フォールバックに追加
+- ユーザーが「わざとANTHROPIC_API_KEYを外したら要約生成がGemini・Claudeともに失敗した」と報告。「こっちでジェミニ動いてるのかな」という疑問も出ていたため、実際に同じプロンプト・入力でGemini APIを直接叩いて原因を再現・特定した
+- 原因はGemini側の`503 UNAVAILABLE: This model is currently experiencing high demand`。ユーザーが貼った2つの記事（Gemini APIキー形式の`AIza`→`AQ.`移行に関する記事）はこの503とは無関係だったが、念のためキー形式を確認したところ既に新形式（`AQ.`）であることを確認。WebSearchでGoogle公式フォーラム・GitHub issueを調査し、この503は2026年時点でGoogle側インフラの既知の広範な問題（新モデルリリース時などにピーク失敗率5割近くの報告あり）であり、「フォールバックで凌ぐ」のが公式に推奨される対処法だと確認できた
+- ユーザーから「無料のAPIって他にないの？」と聞かれ、Groqを提案したところ「Cloudflare Workers AI」を使いたいとの要望（音声入力で「claudeflea」と表記されていたため確認して判明）
+- `cloudflare`スキルとCloudflare公式ドキュメントを参照し、Workers AIのREST API仕様（エンドポイント・認証・レスポンス形式）を確認した上で実装
+- 実装（`src/lib/summarize.ts`）: `summarizeWithCloudflareWorkersAI`を追加し、フォールバック順序を Gemini → Cloudflare Workers AI（`@cf/meta/llama-3.1-8b-instruct`、無料枠1日10,000 neurons） → Claude Haiku（最終手段）に変更。`CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN`が未設定でも即座に例外を投げて次のフォールバックに進むだけなので、今すぐ設定しなくてもアプリは壊れない
+- `npm run build`成功、`npm run lint`は新規エラーなし
+- 次にやること: 人間がCloudflareダッシュボードでAccount IDとWorkers AI権限のAPIトークンを発行し、`.env.local`（その後Vercel）に`CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN`を追加 → 3段階フォールバックが正しく動くか確認
+
 ### 2026-07-06 機能追加 — 編集フォームに「内容だけ保存」を追加、AIのメイン/フォールバックをGemini優先に変更
 - ユーザーから「編集はメモや各項目を手で変更して保存もできるようにしたい」「前回のまとめもそれらを元に作りたい」「APIはGeminiが無料なのでメインにして使い分けを考えて」と依頼
 - AskUserQuestionで3点を確認: (1)「保存」と「AIで作り直す」を別ボタンにする、(2) AIはタスクで使い分けず単純にGeminiをメイン・Claudeをフォールバックに入れ替える、(3)「前回のまとめ」は既存の直近要約表示（編集後にちゃんと更新されればOK）でよい、の3点とも推奨案で合意
