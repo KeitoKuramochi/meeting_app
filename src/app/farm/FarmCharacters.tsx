@@ -557,15 +557,26 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
     setIsStartingDirectFeed(true)
     try {
       const supabase = getSupabase()
-      const { data, error } = await supabase
+      // 新規作成時に manually_confirmed: true を直接insertするとRLSで弾かれるため、
+      // まず通常のリクエストと同じ形でinsertし、直後に手動確定と同じupdateで確定させる
+      const { data: inserted, error: insertError } = await supabase
         .from('meetings')
         .insert({
           student_name: contact.contact_name,
           purpose: '🌾 肥料やり（直接記録）',
           candidates: [],
           farm_contact_id: contact.id,
-          manually_confirmed: true,
         })
+        .select('id')
+        .single<{ id: string }>()
+      if (insertError || !inserted) {
+        setDirectFeedError('記録の作成に失敗しました。もう一度お試しください')
+        return
+      }
+      const { data, error } = await supabase
+        .from('meetings')
+        .update({ manually_confirmed: true })
+        .eq('id', inserted.id)
         .select(MEETING_HISTORY_SELECT)
         .single<MeetingHistoryItem>()
       if (error || !data) {
