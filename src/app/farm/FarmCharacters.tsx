@@ -177,9 +177,8 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
   // リクエストページへのナビゲーション中フラグ
   const [isNavigating, setIsNavigating] = useState(false)
 
-  // リンク経由以外（肥料をあげる＝直接要約を記録する）の登録
-  const [isStartingDirectFeed, setIsStartingDirectFeed] = useState(false)
-  const [directFeedError, setDirectFeedError] = useState<string | null>(null)
+  // リンク経由以外（肥料をあげる＝直接要約を記録する）の登録フォームの開閉
+  const [isDirectFeedFormOpen, setIsDirectFeedFormOpen] = useState(false)
 
   // 手動確定
   const [isConfirming, setIsConfirming] = useState(false)
@@ -536,8 +535,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
     }
   }
 
-  function openSummaryForm(itemId: string) {
-    setSummaryFormItemId(itemId)
+  function resetSummaryFormFields() {
     setSummaryTab('pasted')
     setSummaryPastedText('')
     setSummaryTranscriptText('')
@@ -546,59 +544,30 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
     setSummarySubmitError(null)
   }
 
+  function openSummaryForm(itemId: string) {
+    setSummaryFormItemId(itemId)
+    setIsDirectFeedFormOpen(false)
+    resetSummaryFormFields()
+  }
+
   function closeSummaryForm() {
     setSummaryFormItemId(null)
   }
 
-  // 「肥料をあげる」: リンク作成・日程確定を経由せず、その場で新しい記録を作って要約フォームを開く
-  async function handleStartDirectFeed() {
-    if (isStartingDirectFeed) return
-    setDirectFeedError(null)
-    setIsStartingDirectFeed(true)
-    try {
-      const supabase = getSupabase()
-      // 新規作成時に manually_confirmed: true を直接insertするとRLSで弾かれるため、
-      // まず通常のリクエストと同じ形でinsertし、直後に手動確定と同じupdateで確定させる
-      const { data: inserted, error: insertError } = await supabase
-        .from('meetings')
-        .insert({
-          student_name: contact.contact_name,
-          purpose: '🌾 肥料やり（直接記録）',
-          candidates: [],
-          farm_contact_id: contact.id,
-        })
-        .select('id')
-        .single<{ id: string }>()
-      if (insertError || !inserted) {
-        setDirectFeedError('記録の作成に失敗しました。もう一度お試しください')
-        return
-      }
-      const { data, error } = await supabase
-        .from('meetings')
-        .update({ manually_confirmed: true })
-        .eq('id', inserted.id)
-        .select(MEETING_HISTORY_SELECT)
-        .single<MeetingHistoryItem>()
-      if (error || !data) {
-        setDirectFeedError('記録の作成に失敗しました。もう一度お試しください')
-        return
-      }
-      // 進行中の fetchHistory がこの新しい記録より古い結果で上書きしないよう世代を進める
-      fetchGenerationRef.current++
-      setHistoryItems(prev => [data, ...prev])
-      openSummaryForm(data.id)
-      onDirectFeedCreated(contact.id)
-      requestAnimationFrame(() => {
-        if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0
-      })
-    } catch {
-      setDirectFeedError('記録の作成に失敗しました。もう一度お試しください')
-    } finally {
-      setIsStartingDirectFeed(false)
-    }
+  // 「肥料をあげる」: 内容を書く前にレコードを作らず、まず入力フォームだけを開く
+  // （内容が空の記録がどんどん保存されるのを防ぐため、実際の保存は提出時の1回のみ）
+  function openDirectFeedForm() {
+    setIsDirectFeedFormOpen(true)
+    setSummaryFormItemId(null)
+    resetSummaryFormFields()
   }
 
-  async function handleSummarySubmit(meetingId: string) {
+  function closeDirectFeedForm() {
+    setIsDirectFeedFormOpen(false)
+  }
+
+  // meetingId が null の場合は「肥料をあげる」からの新規記録として、要約と同時にmeetings行を作成する
+  async function handleSummarySubmit(meetingId: string | null) {
     let summaryRawInput: string | null = null
     let summaryQa: QAPair[] | null = null
 
@@ -624,40 +593,174 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
 
       const submittedAt = new Date().toISOString()
       const supabase = getSupabase()
-      const { error } = await supabase
-        .from('meetings')
-        .update({
-          summary_text: summaryText,
-          summary_source: summaryTab,
-          summary_raw_input: summaryRawInput,
-          summary_qa: summaryQa,
-          summary_submitted_at: submittedAt,
-        })
-        .eq('id', meetingId)
-      if (error) {
-        setSummarySubmitError('保存に失敗しました。もう一度お試しください')
-        return
-      }
-      setHistoryItems(prev =>
-        prev.map(item =>
-          item.id === meetingId
-            ? {
-                ...item,
-                summary_text: summaryText,
-                summary_source: summaryTab,
-                summary_qa: summaryQa,
-                summary_submitted_at: submittedAt,
-              }
-            : item
+
+      if (meetingId === null) {
+        const { data, error } = await supabase
+          .from('meetings')
+          .insert({
+            student_name: contact.contact_name,
+            purpose: '🌾 肥料やり（直接記録）',
+            candidates: [],
+            farm_contact_id: contact.id,
+            manually_confirmed: true,
+            summary_text: summaryText,
+            summary_source: summaryTab,
+            summary_raw_input: summaryRawInput,
+            summary_qa: summaryQa,
+            summary_submitted_at: submittedAt,
+          })
+          .select(MEETING_HISTORY_SELECT)
+          .single<MeetingHistoryItem>()
+        if (error || !data) {
+          setSummarySubmitError('保存に失敗しました。もう一度お試しください')
+          return
+        }
+        // 進行中の fetchHistory がこの新しい記録より古い結果で上書きしないよう世代を進める
+        fetchGenerationRef.current++
+        setHistoryItems(prev => [data, ...prev])
+        onDirectFeedCreated(contact.id)
+        closeDirectFeedForm()
+      } else {
+        const { error } = await supabase
+          .from('meetings')
+          .update({
+            summary_text: summaryText,
+            summary_source: summaryTab,
+            summary_raw_input: summaryRawInput,
+            summary_qa: summaryQa,
+            summary_submitted_at: submittedAt,
+          })
+          .eq('id', meetingId)
+        if (error) {
+          setSummarySubmitError('保存に失敗しました。もう一度お試しください')
+          return
+        }
+        setHistoryItems(prev =>
+          prev.map(item =>
+            item.id === meetingId
+              ? {
+                  ...item,
+                  summary_text: summaryText,
+                  summary_source: summaryTab,
+                  summary_qa: summaryQa,
+                  summary_submitted_at: submittedAt,
+                }
+              : item
+          )
         )
-      )
+        closeSummaryForm()
+      }
       onSummarySubmitted(contact.id)
-      closeSummaryForm()
     } catch (e) {
       setSummarySubmitError(e instanceof Error ? e.message : '要約の生成に失敗しました')
     } finally {
       setIsSubmittingSummary(false)
     }
+  }
+
+  // 要約入力フォームの中身（既存記録への追記／「肥料をあげる」の新規記録、両方で共有する）
+  function renderSummaryFormFields(onSubmit: () => void, onCancel: () => void) {
+    return (
+      <div className="rounded-lg p-2.5 space-y-2" style={{ background: '#fefce8', border: '1px solid #fde68a' }}>
+        <div className="flex gap-1">
+          {(['pasted', 'transcript', 'memo_qa'] as SummarySource[]).map(tab => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => { setSummaryTab(tab); setSummarySubmitError(null) }}
+              className="flex-1 rounded-md px-1.5 py-1.5 text-xs font-semibold focus:outline-none transition-colors"
+              style={{
+                background: summaryTab === tab ? '#2a5c1e' : '#fffdf7',
+                color: summaryTab === tab ? '#f5e6a3' : '#6b4c0a',
+                border: '1px solid #d4a853',
+              }}
+            >
+              {SUMMARY_SOURCE_LABEL[tab]}
+            </button>
+          ))}
+        </div>
+
+        {summaryTab === 'pasted' && (
+          <textarea
+            value={summaryPastedText}
+            onChange={e => setSummaryPastedText(e.target.value)}
+            placeholder="Granolaなどで作った要約を貼り付けてください"
+            className="w-full rounded-md p-2 text-xs focus:outline-none"
+            style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
+            rows={4}
+          />
+        )}
+
+        {summaryTab === 'transcript' && (
+          <div className="space-y-1">
+            <textarea
+              value={summaryTranscriptText}
+              onChange={e => setSummaryTranscriptText(e.target.value)}
+              placeholder="文字起こしをそのまま貼り付けてください"
+              className="w-full rounded-md p-2 text-xs focus:outline-none"
+              style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
+              rows={4}
+            />
+            <p className="text-xs" style={{ color: '#92400e' }}>
+              ※ AIが自動で要約を作成します
+            </p>
+          </div>
+        )}
+
+        {summaryTab === 'memo_qa' && (
+          <div className="space-y-2">
+            <textarea
+              value={summaryMemoText}
+              onChange={e => setSummaryMemoText(e.target.value)}
+              placeholder="簡単なメモ（任意）"
+              className="w-full rounded-md p-2 text-xs focus:outline-none"
+              style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
+              rows={2}
+            />
+            {SUMMARY_REFERENCE_QUESTIONS.map((q, i) => (
+              <div key={i} className="space-y-1">
+                <p className="text-xs font-medium" style={{ color: '#6b4c0a' }}>{q}</p>
+                <textarea
+                  value={summaryQaAnswers[i]}
+                  onChange={e => setSummaryQaAnswers(prev => {
+                    const next = [...prev]
+                    next[i] = e.target.value
+                    return next
+                  })}
+                  className="w-full rounded-md p-2 text-xs focus:outline-none"
+                  style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
+                  rows={2}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {summarySubmitError && (
+          <p className="text-xs" style={{ color: '#b91c1c' }}>{summarySubmitError}</p>
+        )}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={isSubmittingSummary || !canSubmitSummary}
+            className="farm-btn flex-1 flex h-10 items-center justify-center text-xs focus:outline-none transition-colors disabled:opacity-60"
+          >
+            {isSubmittingSummary
+              ? (summaryTab === 'pasted' ? '送信中...' : 'AIが要約中...')
+              : '要約を提出する'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex h-10 px-3 items-center justify-center rounded-lg text-xs font-medium focus:outline-none transition-colors"
+            style={{ border: '1.5px solid #d4a853', color: '#6b4c0a', background: '#fffdf7' }}
+          >
+            キャンセル
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // 直近に提出された要約（次回ミーティング前にすぐ見返せるようにする）
@@ -855,107 +958,8 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                           📝 要約を記録する
                         </button>
                       )}
-                      {summaryFormItemId === item.id && (
-                        <div className="rounded-lg p-2.5 space-y-2" style={{ background: '#fefce8', border: '1px solid #fde68a' }}>
-                          <div className="flex gap-1">
-                            {(['pasted', 'transcript', 'memo_qa'] as SummarySource[]).map(tab => (
-                              <button
-                                key={tab}
-                                type="button"
-                                onClick={() => { setSummaryTab(tab); setSummarySubmitError(null) }}
-                                className="flex-1 rounded-md px-1.5 py-1.5 text-xs font-semibold focus:outline-none transition-colors"
-                                style={{
-                                  background: summaryTab === tab ? '#2a5c1e' : '#fffdf7',
-                                  color: summaryTab === tab ? '#f5e6a3' : '#6b4c0a',
-                                  border: '1px solid #d4a853',
-                                }}
-                              >
-                                {SUMMARY_SOURCE_LABEL[tab]}
-                              </button>
-                            ))}
-                          </div>
-
-                          {summaryTab === 'pasted' && (
-                            <textarea
-                              value={summaryPastedText}
-                              onChange={e => setSummaryPastedText(e.target.value)}
-                              placeholder="Granolaなどで作った要約を貼り付けてください"
-                              className="w-full rounded-md p-2 text-xs focus:outline-none"
-                              style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
-                              rows={4}
-                            />
-                          )}
-
-                          {summaryTab === 'transcript' && (
-                            <div className="space-y-1">
-                              <textarea
-                                value={summaryTranscriptText}
-                                onChange={e => setSummaryTranscriptText(e.target.value)}
-                                placeholder="文字起こしをそのまま貼り付けてください"
-                                className="w-full rounded-md p-2 text-xs focus:outline-none"
-                                style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
-                                rows={4}
-                              />
-                              <p className="text-xs" style={{ color: '#92400e' }}>
-                                ※ AIが自動で要約を作成します
-                              </p>
-                            </div>
-                          )}
-
-                          {summaryTab === 'memo_qa' && (
-                            <div className="space-y-2">
-                              <textarea
-                                value={summaryMemoText}
-                                onChange={e => setSummaryMemoText(e.target.value)}
-                                placeholder="簡単なメモ（任意）"
-                                className="w-full rounded-md p-2 text-xs focus:outline-none"
-                                style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
-                                rows={2}
-                              />
-                              {SUMMARY_REFERENCE_QUESTIONS.map((q, i) => (
-                                <div key={i} className="space-y-1">
-                                  <p className="text-xs font-medium" style={{ color: '#6b4c0a' }}>{q}</p>
-                                  <textarea
-                                    value={summaryQaAnswers[i]}
-                                    onChange={e => setSummaryQaAnswers(prev => {
-                                      const next = [...prev]
-                                      next[i] = e.target.value
-                                      return next
-                                    })}
-                                    className="w-full rounded-md p-2 text-xs focus:outline-none"
-                                    style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
-                                    rows={2}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {summarySubmitError && (
-                            <p className="text-xs" style={{ color: '#b91c1c' }}>{summarySubmitError}</p>
-                          )}
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleSummarySubmit(item.id)}
-                              disabled={isSubmittingSummary || !canSubmitSummary}
-                              className="farm-btn flex-1 flex h-10 items-center justify-center text-xs focus:outline-none transition-colors disabled:opacity-60"
-                            >
-                              {isSubmittingSummary
-                                ? (summaryTab === 'pasted' ? '送信中...' : 'AIが要約中...')
-                                : '要約を提出する'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={closeSummaryForm}
-                              className="flex h-10 px-3 items-center justify-center rounded-lg text-xs font-medium focus:outline-none transition-colors"
-                              style={{ border: '1.5px solid #d4a853', color: '#6b4c0a', background: '#fffdf7' }}
-                            >
-                              キャンセル
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      {summaryFormItemId === item.id &&
+                        renderSummaryFormFields(() => handleSummarySubmit(item.id), closeSummaryForm)}
 
                       {/* 返信あり: 別日提案内容 + アクションボタン */}
                       {hasReply && (
@@ -1032,17 +1036,17 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                   </span>
                 ) : '🌱 新しい種をまく'}
               </button>
-              <button
-                type="button"
-                onClick={handleStartDirectFeed}
-                disabled={isStartingDirectFeed}
-                className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold focus:outline-none transition-colors disabled:opacity-75"
-                style={{ border: '1.5px solid #4d7c0f', color: '#365314', background: '#ecfccb' }}
-              >
-                {isStartingDirectFeed ? '準備中...' : '🌾 肥料をあげる（要約を記録する）'}
-              </button>
-              {directFeedError && (
-                <p className="text-xs text-center" style={{ color: '#b91c1c' }}>{directFeedError}</p>
+              {!isDirectFeedFormOpen ? (
+                <button
+                  type="button"
+                  onClick={openDirectFeedForm}
+                  className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold focus:outline-none transition-colors"
+                  style={{ border: '1.5px solid #4d7c0f', color: '#365314', background: '#ecfccb' }}
+                >
+                  🌾 肥料をあげる（要約を記録する）
+                </button>
+              ) : (
+                renderSummaryFormFields(() => handleSummarySubmit(null), closeDirectFeedForm)
               )}
               <button
                 type="button"
