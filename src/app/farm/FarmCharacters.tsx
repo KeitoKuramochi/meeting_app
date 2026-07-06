@@ -57,13 +57,14 @@ type MeetingHistoryItem = {
   manually_confirmed: boolean | null
   summary_text: string | null
   summary_source: SummarySource | null
+  summary_raw_input: string | null
   summary_qa: QAPair[] | null
   summary_submitted_at: string | null
 }
 
 // meetings 履歴取得・直接記録作成の両方で使う共通の select 列
 const MEETING_HISTORY_SELECT =
-  'id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note, manually_confirmed, summary_text, summary_source, summary_qa, summary_submitted_at'
+  'id, student_name, purpose, candidates, confirmed_index, confirmed_at, created_at, replied_at, alternative_candidates, duration_minutes, note, manually_confirmed, summary_text, summary_source, summary_raw_input, summary_qa, summary_submitted_at'
 
 // 型ガード: 読み取った値が DraftData かを検証する
 function isDraftData(value: unknown): value is DraftData {
@@ -550,6 +551,21 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
     resetSummaryFormFields()
   }
 
+  // 提出済みの要約を編集する: 元の入力内容をフォームに復元してから開く
+  function openSummaryEditForm(item: MeetingHistoryItem) {
+    setSummaryFormItemId(item.id)
+    setIsDirectFeedFormOpen(false)
+    setSummarySubmitError(null)
+    const source = item.summary_source ?? 'pasted'
+    setSummaryTab(source)
+    setSummaryPastedText(source === 'pasted' ? item.summary_text ?? '' : '')
+    setSummaryTranscriptText(source === 'transcript' ? item.summary_raw_input ?? '' : '')
+    setSummaryMemoText(source === 'memo_qa' ? item.summary_raw_input ?? '' : '')
+    setSummaryQaAnswers(
+      SUMMARY_REFERENCE_QUESTIONS.map((_, i) => item.summary_qa?.[i]?.answer ?? '')
+    )
+  }
+
   function closeSummaryForm() {
     setSummaryFormItemId(null)
   }
@@ -619,8 +635,11 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
         fetchGenerationRef.current++
         setHistoryItems(prev => [data, ...prev])
         onDirectFeedCreated(contact.id)
+        onSummarySubmitted(contact.id)
         closeDirectFeedForm()
       } else {
+        // 既に要約が提出済みの記録を編集した場合は、成長カウントを重複加算しない
+        const isFirstSubmission = !historyItems.find(item => item.id === meetingId)?.summary_submitted_at
         const { error } = await supabase
           .from('meetings')
           .update({
@@ -642,15 +661,16 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                   ...item,
                   summary_text: summaryText,
                   summary_source: summaryTab,
+                  summary_raw_input: summaryRawInput,
                   summary_qa: summaryQa,
                   summary_submitted_at: submittedAt,
                 }
               : item
           )
         )
+        if (isFirstSubmission) onSummarySubmitted(contact.id)
         closeSummaryForm()
       }
-      onSummarySubmitted(contact.id)
     } catch (e) {
       setSummarySubmitError(e instanceof Error ? e.message : '要約の生成に失敗しました')
     } finally {
@@ -936,16 +956,26 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                       )}
 
                       {/* 要約: 提出済みなら表示、未提出（確定済みのみ）なら記録ボタン/フォーム */}
-                      {isConfirmed && item.summary_submitted_at && (
+                      {isConfirmed && item.summary_submitted_at && summaryFormItemId !== item.id && (
                         <div className="rounded-lg px-2.5 py-2 text-xs space-y-1" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                          <p className="font-semibold" style={{ color: '#166534' }}>
-                            📄 要約
-                            {item.summary_source && (
-                              <span className="ml-1 font-normal" style={{ color: '#4d7c0f' }}>
-                                （{SUMMARY_SOURCE_LABEL[item.summary_source]}）
-                              </span>
-                            )}
-                          </p>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-semibold" style={{ color: '#166534' }}>
+                              📄 要約
+                              {item.summary_source && (
+                                <span className="ml-1 font-normal" style={{ color: '#4d7c0f' }}>
+                                  （{SUMMARY_SOURCE_LABEL[item.summary_source]}）
+                                </span>
+                              )}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => openSummaryEditForm(item)}
+                              className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium focus:outline-none transition-colors"
+                              style={{ color: '#166534', textDecoration: 'underline' }}
+                            >
+                              ✏️ 編集する
+                            </button>
+                          </div>
                           <p className="whitespace-pre-wrap" style={{ color: '#14532d' }}>{item.summary_text}</p>
                         </div>
                       )}
