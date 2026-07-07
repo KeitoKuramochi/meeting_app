@@ -1120,7 +1120,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                     </svg>
                     移動中...
                   </span>
-                ) : '🌱 新しい種をまく'}
+                ) : '🌱 新しい種をまく（リンクを作る）'}
               </button>
               {!isDirectFeedFormOpen ? (
                 <button

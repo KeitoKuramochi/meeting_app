@@ -443,7 +443,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
         disabled={isSubmitting}
         className="farm-btn flex h-12 w-full items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {isSubmitting ? 'まいています...' : '🌱 種をまく'}
+        {isSubmitting ? 'まいています...' : '🌱 種をまく（リンクを作成）'}
       </button>
     </form>
   )

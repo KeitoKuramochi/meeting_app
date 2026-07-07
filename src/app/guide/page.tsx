@@ -125,10 +125,10 @@ export default function GuidePage() {
             >
               3
             </span>
-            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>種まきフォームに入力する</h2>
+            <h2 className="text-base font-extrabold" style={{ color: '#2c1a0e' }}>種まき（リンク作成）フォームに入力する</h2>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: '#3d2b0e' }}>
-            名前・相談内容・希望日程を入力すると種まき用URLが生成されます。
+            名前・相談内容・希望日程を入力すると、種まき用URL＝日程調整リンクが生成されます。
             そのURLをなかまに送るだけで日程調整が始まります。
           </p>
           {/* モックフォーム */}
