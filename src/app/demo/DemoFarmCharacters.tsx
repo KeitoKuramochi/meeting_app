@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, type RefObject } from 'react'
 import { FarmContactWithCount } from '@/types/farm'
+import DemoPreviewModal from './DemoPreviewModal'
 
 function getScale(confirmedCount: number): number {
   if (confirmedCount <= 0) return 0.60
@@ -18,20 +19,6 @@ function seedRand(index: number, n: number): number {
 }
 
 type WalkState = { x: number; y: number; vx: number; vy: number; timer: number }
-
-// トースト表示用コンポーネント
-function Toast({ message, onClose }: { message: string; onClose: () => void }) {
-  useEffect(() => {
-    const id = setTimeout(onClose, 2000)
-    return () => clearTimeout(id)
-  }, [onClose])
-
-  return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-gray-900/90 text-white text-sm font-medium shadow-lg pointer-events-none">
-      {message}
-    </div>
-  )
-}
 
 type CharacterProps = {
   contact: FarmContactWithCount
@@ -288,14 +275,8 @@ function DemoCharacter({ contact, index, isCrown, onTap, positionsRef }: Charact
 type Props = { contacts: FarmContactWithCount[] }
 
 export default function DemoFarmCharacters({ contacts }: Props) {
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [previewContactName, setPreviewContactName] = useState<string | null>(null)
   const positionsRef = useRef<({ x: number; y: number } | null)[]>([])
-
-  const handleTap = useCallback(() => {
-    setToastMessage('デモモードでは種をまけません。ログインして本格的に育てましょう！')
-  }, [])
-
-  const handleToastClose = useCallback(() => setToastMessage(null), [])
 
   if (contacts.length === 0) {
     return (
@@ -320,12 +301,15 @@ export default function DemoFarmCharacters({ contacts }: Props) {
           contact={contact}
           index={index}
           isCrown={contact.id === crownId}
-          onTap={handleTap}
+          onTap={() => setPreviewContactName(contact.contact_name)}
           positionsRef={positionsRef}
         />
       ))}
-      {toastMessage && (
-        <Toast message={toastMessage} onClose={handleToastClose} />
+      {previewContactName && (
+        <DemoPreviewModal
+          contactName={previewContactName}
+          onClose={() => setPreviewContactName(null)}
+        />
       )}
     </>
   )
