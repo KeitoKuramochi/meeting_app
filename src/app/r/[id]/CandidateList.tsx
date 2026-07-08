@@ -4,6 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Candidate } from '@/types/meeting'
 import { getSupabase } from '@/lib/supabase'
+import {
+  DurationPicker,
+  type DurationPreset,
+  resolveDurationMinutes,
+  minutesToPreset,
+  formatDurationMinutes,
+  computeEndDateTime,
+} from '@/components/DurationPicker'
 
 type Props = {
   candidates: Candidate[]
@@ -28,16 +36,6 @@ const TIME_OPTIONS: string[] = (() => {
   return options
 })()
 
-type DurationPreset = 30 | 60 | 90 | 120 | 'other'
-
-const DURATION_PRESETS: { value: DurationPreset; label: string }[] = [
-  { value: 30, label: '30分' },
-  { value: 60, label: '1時間' },
-  { value: 90, label: '1時間30分' },
-  { value: 120, label: '2時間' },
-  { value: 'other', label: 'その他' },
-]
-
 function formatCandidate(candidate: Candidate): string {
   const date = new Date(`${candidate.date}T${candidate.time}:00`)
   const dateStr = date.toLocaleDateString('ja-JP', {
@@ -49,12 +47,22 @@ function formatCandidate(candidate: Candidate): string {
   return `${dateStr} ${candidate.time}`
 }
 
-function formatDurationMinutes(minutes: number): string {
-  if (minutes < 60) return `${minutes}分`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  if (m === 0) return `${h}時間`
-  return `${h}時間${m}分`
+// 開始〜終了の時刻がひと目でわかる表示にする（所要時間が未確定なら開始時刻のみ）
+function formatCandidateRange(candidate: Candidate, durationMinutes: number | null): string {
+  const start = formatCandidate(candidate)
+  if (durationMinutes == null) return start
+  const end = computeEndDateTime(candidate.date, candidate.time, durationMinutes)
+  if (end.date === candidate.date) {
+    return `${start}〜${end.time}`
+  }
+  const endDateObj = new Date(`${end.date}T${end.time}:00`)
+  const endDateStr = endDateObj.toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  })
+  return `${start} 〜 ${endDateStr} ${end.time}`
 }
 
 function getTodayString(): string {
@@ -63,61 +71,6 @@ function getTodayString(): string {
   const mm = String(today.getMonth() + 1).padStart(2, '0')
   const dd = String(today.getDate()).padStart(2, '0')
   return `${yyyy}-${mm}-${dd}`
-}
-
-// 所要時間選択UI（確定フロー・別日提案フロー共通）
-type DurationPickerProps = {
-  selectedPreset: DurationPreset | null
-  customMinutes: string
-  onPresetChange: (preset: DurationPreset) => void
-  onCustomChange: (value: string) => void
-}
-
-function DurationPicker({
-  selectedPreset,
-  customMinutes,
-  onPresetChange,
-  onCustomChange,
-}: DurationPickerProps) {
-  return (
-    <div>
-      <div className="flex flex-wrap gap-2">
-        {DURATION_PRESETS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onPresetChange(value)}
-            className="rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-            style={
-              selectedPreset === value
-                ? { border: '2px solid #d4a030', background: '#fef3c7', color: '#92400e' }
-                : { border: '1.5px solid #c8953a', background: '#fffdf7', color: '#6b4c0a' }
-            }
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {selectedPreset === 'other' && (
-        <div className="mt-2">
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={1}
-              max={480}
-              value={customMinutes}
-              onChange={(e) => onCustomChange(e.target.value)}
-              placeholder="例：45"
-              className="w-24 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-              style={{ border: '1.5px solid #c8953a', background: '#fffdf7', color: '#2c1a0e' }}
-            />
-            <span className="text-sm" style={{ color: '#6b4c0a' }}>分</span>
-          </div>
-          <p className="mt-1 text-xs" style={{ color: '#8b6914' }}>1〜480分（最大8時間）</p>
-        </div>
-      )}
-    </div>
-  )
 }
 
 function createEmptyAltCandidate(): Candidate {
@@ -141,8 +94,13 @@ export default function CandidateList({
     initialIsConfirmed ? confirmedIndex : null
   )
   const [isConfirmed, setIsConfirmed] = useState<boolean>(initialIsConfirmed)
-  const [durationPreset, setDurationPreset] = useState<DurationPreset | null>(null)
-  const [durationCustom, setDurationCustom] = useState<string>('')
+  // 送信者側があらかじめ指定した所要時間があれば初期値として引き継ぐ
+  const [durationPreset, setDurationPreset] = useState<DurationPreset | null>(
+    () => minutesToPreset(initialDurationMinutes).preset
+  )
+  const [durationCustom, setDurationCustom] = useState<string>(
+    () => minutesToPreset(initialDurationMinutes).custom
+  )
   const [confirmNote, setConfirmNote] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [errorMessage, setErrorMessage] = useState<string>('')
@@ -154,8 +112,12 @@ export default function CandidateList({
   // --- 別日提案フロー状態 ---
   const [showAlternativeForm, setShowAlternativeForm] = useState<boolean>(false)
   const [altCandidates, setAltCandidates] = useState<Candidate[]>([createEmptyAltCandidate()])
-  const [altDurationPreset, setAltDurationPreset] = useState<DurationPreset | null>(null)
-  const [altDurationCustom, setAltDurationCustom] = useState<string>('')
+  const [altDurationPreset, setAltDurationPreset] = useState<DurationPreset | null>(
+    () => minutesToPreset(initialDurationMinutes).preset
+  )
+  const [altDurationCustom, setAltDurationCustom] = useState<string>(
+    () => minutesToPreset(initialDurationMinutes).custom
+  )
   const [altNote, setAltNote] = useState<string>('')
   const [isAltSubmitting, setIsAltSubmitting] = useState<boolean>(false)
   const [altErrorMessage, setAltErrorMessage] = useState<string>('')
@@ -202,15 +164,15 @@ export default function CandidateList({
           ミーティングが確定しました！
         </p>
         {confirmedCandidate ? (
-          <p className="mb-1 text-sm" style={{ color: '#047857' }}>
-            {formatCandidate(confirmedCandidate)}
+          <p className="mb-1 text-base font-semibold" style={{ color: '#047857' }}>
+            {formatCandidateRange(confirmedCandidate, confirmedDurationMinutes)}
           </p>
         ) : (
           <p className="mb-1 text-sm" style={{ color: '#047857' }}>
             送信者からの連絡内容で確定しています。
           </p>
         )}
-        {displayDuration && (
+        {(!confirmedCandidate || confirmedDurationMinutes == null) && displayDuration && (
           <p className="mb-1 text-sm" style={{ color: '#047857' }}>所要時間: {displayDuration}</p>
         )}
         {displayNote && (
@@ -218,18 +180,6 @@ export default function CandidateList({
         )}
       </div>
     )
-  }
-
-  function resolveDurationMinutes(
-    preset: DurationPreset | null,
-    custom: string
-  ): number | null {
-    if (preset === null) return null
-    if (preset === 'other') {
-      const parsed = parseInt(custom, 10)
-      return isNaN(parsed) || parsed <= 0 ? null : parsed
-    }
-    return preset
   }
 
   async function handleConfirm() {
@@ -353,6 +303,13 @@ export default function CandidateList({
 
   return (
     <div>
+      {/* 送信者が希望する所要時間（あれば表示） */}
+      {initialDurationMinutes != null && (
+        <p className="mb-3 text-sm" style={{ color: '#6b4c0a' }}>
+          ⏱ ご希望の所要時間: {formatDurationMinutes(initialDurationMinutes)}
+        </p>
+      )}
+
       {/* 候補日選択 */}
       <div className="mb-4 space-y-3">
         {candidates.map((candidate, index) => {

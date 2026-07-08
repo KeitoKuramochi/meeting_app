@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Candidate } from '@/types/meeting'
 import { getSupabase } from '@/lib/supabase'
+import { DurationPicker, type DurationPreset, resolveDurationMinutes } from '@/components/DurationPicker'
 
 type Props = {
   farmContactId: string
@@ -16,6 +17,7 @@ type FormErrors = {
   studentName?: string
   purpose?: string
   candidates?: string
+  duration?: string
   submit?: string
 }
 
@@ -45,6 +47,8 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
   const [candidates, setCandidates] = useState<Candidate[]>([createEmptyCandidate()])
   // 各候補の「詳細な時刻を入力」モード
   const [preciseModes, setPreciseModes] = useState<boolean[]>([false])
+  const [durationPreset, setDurationPreset] = useState<DurationPreset | null>(null)
+  const [durationCustom, setDurationCustom] = useState('')
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submittedInfo, setSubmittedInfo] = useState<{ meetingId: string; url: string } | null>(null)
@@ -99,6 +103,14 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
       valid = false
     }
 
+    if (durationPreset === null) {
+      newErrors.duration = '所要時間を選択してください'
+      valid = false
+    } else if (durationPreset === 'other' && resolveDurationMinutes(durationPreset, durationCustom) === null) {
+      newErrors.duration = '所要時間（分）を正しく入力してください'
+      valid = false
+    }
+
     setErrors(newErrors)
     return valid
   }
@@ -122,6 +134,7 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           purpose: purpose.trim(),
           candidates: filledCandidates,
           farm_contact_id: farmContactId,
+          duration_minutes: resolveDurationMinutes(durationPreset, durationCustom),
         })
         .select('id')
         .single<{ id: string }>()
@@ -427,6 +440,27 @@ export default function RequestForm({ farmContactId, contactName, confirmedCount
           >
             <span aria-hidden="true">＋</span> 候補日を追加
           </button>
+        )}
+      </div>
+
+      {/* 所要時間 */}
+      <div className="mb-5">
+        <p className="text-sm font-semibold mb-2" style={{ color: '#3d2b0e' }}>
+          想定している所要時間
+        </p>
+        <DurationPicker
+          selectedPreset={durationPreset}
+          customMinutes={durationCustom}
+          onPresetChange={(p) => {
+            setDurationPreset(p)
+            setErrors((prev) => ({ ...prev, duration: undefined }))
+          }}
+          onCustomChange={setDurationCustom}
+        />
+        {errors.duration && (
+          <p role="alert" className="mt-2 text-sm" style={{ color: '#b91c1c' }}>
+            {errors.duration}
+          </p>
         )}
       </div>
 

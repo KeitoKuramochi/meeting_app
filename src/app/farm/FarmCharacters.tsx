@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation'
 import { FarmContactWithCount } from '@/types/farm'
 import { getSupabase } from '@/lib/supabase'
 import { Candidate, SummarySource, QAPair } from '@/types/meeting'
+import {
+  DurationPicker,
+  type DurationPreset,
+  resolveDurationMinutes,
+  minutesToPreset,
+  computeEndDateTime,
+} from '@/components/DurationPicker'
 
 // 要約提出パターン3（メモ＋質問）の固定参考質問
 const SUMMARY_REFERENCE_QUESTIONS = [
@@ -103,6 +110,16 @@ function formatDate(dateString: string): string {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
 }
 
+// 確定した候補日時を「開始〜終了」でひと目で分かる形にする（所要時間が未確定なら開始時刻のみ）
+function formatConfirmedRange(candidate: Candidate, durationMinutes: number | null): string {
+  if (durationMinutes == null) return `${candidate.date} ${candidate.time}`
+  const end = computeEndDateTime(candidate.date, candidate.time, durationMinutes)
+  if (end.date === candidate.date) {
+    return `${candidate.date} ${candidate.time}〜${end.time}`
+  }
+  return `${candidate.date} ${candidate.time}〜${end.date} ${end.time}`
+}
+
 // 確定待ち状態のドットアニメーションコンポーネント
 function PendingDots() {
   const [dotCount, setDotCount] = useState(1)
@@ -185,6 +202,14 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
   const [isConfirming, setIsConfirming] = useState(false)
   const [localManualConfirmed, setLocalManualConfirmed] = useState(false)
   const [locallyConfirmedIds, setLocallyConfirmedIds] = useState<Set<string>>(new Set())
+  // 手動確定フォーム: どの候補で確定したか（"existing:<index>" / "alt:<index>" / "other"）＋所要時間
+  const [manualConfirmItemId, setManualConfirmItemId] = useState<string | null>(null)
+  const [manualConfirmChoiceKey, setManualConfirmChoiceKey] = useState<string | null>(null)
+  const [manualConfirmCustomDate, setManualConfirmCustomDate] = useState('')
+  const [manualConfirmCustomTime, setManualConfirmCustomTime] = useState('')
+  const [manualConfirmDurationPreset, setManualConfirmDurationPreset] = useState<DurationPreset | null>(null)
+  const [manualConfirmDurationCustom, setManualConfirmDurationCustom] = useState('')
+  const [manualConfirmError, setManualConfirmError] = useState<string | null>(null)
 
   // 要約提出フォーム
   const [summaryFormItemId, setSummaryFormItemId] = useState<string | null>(null)
@@ -529,23 +554,81 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
     }
   }
 
-  async function handleManualConfirmItem(meetingId: string) {
-    const ok = window.confirm('本当に確定しましたか？')
-    if (!ok) return
+  function openManualConfirmForm(item: MeetingHistoryItem) {
+    setManualConfirmItemId(item.id)
+    setManualConfirmChoiceKey(null)
+    setManualConfirmCustomDate('')
+    setManualConfirmCustomTime('')
+    const { preset, custom } = minutesToPreset(item.duration_minutes)
+    setManualConfirmDurationPreset(preset)
+    setManualConfirmDurationCustom(custom)
+    setManualConfirmError(null)
+  }
+
+  function closeManualConfirmForm() {
+    setManualConfirmItemId(null)
+  }
+
+  async function handleManualConfirmSubmit(item: MeetingHistoryItem) {
+    setManualConfirmError(null)
+    if (!manualConfirmChoiceKey) {
+      setManualConfirmError('確定した日時を選んでください')
+      return
+    }
+    const durationMinutes = resolveDurationMinutes(manualConfirmDurationPreset, manualConfirmDurationCustom)
+    if (durationMinutes === null) {
+      setManualConfirmError('所要時間を選択してください')
+      return
+    }
+
+    let confirmedIndex: number
+    let candidatesForUpdate: Candidate[] | null = null
+
+    if (manualConfirmChoiceKey === 'other') {
+      if (!manualConfirmCustomDate || !manualConfirmCustomTime) {
+        setManualConfirmError('日付と時間を入力してください')
+        return
+      }
+      candidatesForUpdate = [...item.candidates, { date: manualConfirmCustomDate, time: manualConfirmCustomTime }]
+      confirmedIndex = candidatesForUpdate.length - 1
+    } else if (manualConfirmChoiceKey.startsWith('existing:')) {
+      confirmedIndex = Number(manualConfirmChoiceKey.split(':')[1])
+    } else if (manualConfirmChoiceKey.startsWith('alt:')) {
+      const altIndex = Number(manualConfirmChoiceKey.split(':')[1])
+      const altCandidate = item.alternative_candidates?.[altIndex]
+      if (!altCandidate) {
+        setManualConfirmError('選択した候補が見つかりません')
+        return
+      }
+      candidatesForUpdate = [...item.candidates, altCandidate]
+      confirmedIndex = candidatesForUpdate.length - 1
+    } else {
+      setManualConfirmError('確定した日時を選んでください')
+      return
+    }
+
     setIsConfirming(true)
     try {
       const supabase = getSupabase()
+      const updatePayload = candidatesForUpdate
+        ? { manually_confirmed: true, duration_minutes: durationMinutes, confirmed_index: confirmedIndex, candidates: candidatesForUpdate }
+        : { manually_confirmed: true, duration_minutes: durationMinutes, confirmed_index: confirmedIndex }
       await supabase
         .from('meetings')
-        .update({ manually_confirmed: true })
-        .eq('id', meetingId)
+        .update(updatePayload)
+        .eq('id', item.id)
     } catch {
       // DB エラーは無視してローカル表示だけ更新
     } finally {
       setIsConfirming(false)
-      setLocallyConfirmedIds(prev => new Set(prev).add(meetingId))
+      setLocallyConfirmedIds(prev => new Set(prev).add(item.id))
       setLocalManualConfirmed(true)
+      setHistoryItems(prev => prev.map(h => h.id === item.id
+        ? { ...h, manually_confirmed: true, duration_minutes: durationMinutes, confirmed_index: confirmedIndex, candidates: candidatesForUpdate ?? h.candidates }
+        : h
+      ))
       onManualConfirmed(contact.id)
+      closeManualConfirmForm()
     }
   }
 
@@ -1009,8 +1092,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                       {/* 確定済みの場合: 確定日時 */}
                       {isConfirmed && confirmedCandidate && (
                         <div className="text-xs font-medium" style={{ color: '#065f46' }}>
-                          確定: {confirmedCandidate.date} {confirmedCandidate.time}
-                          {item.duration_minutes != null && ` • ${formatDuration(item.duration_minutes)}`}
+                          確定: {formatConfirmedRange(confirmedCandidate, item.duration_minutes)}
                         </div>
                       )}
                       {isConfirmed && !confirmedCandidate && !isDirectFeedItem && (
@@ -1080,14 +1162,105 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                           <div className="rounded-lg px-2.5 py-1.5 text-xs" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
                             <p style={{ color: '#78350f' }}>💡 チャットで合意した日時で確定するか、新しく種をまいて別の候補を送れます</p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleManualConfirmItem(item.id)}
-                            disabled={isConfirming}
-                            className="farm-btn flex h-11 w-full items-center justify-center text-xs focus:outline-none transition-colors disabled:opacity-60"
-                          >
-                            {isConfirming ? '確定中...' : '✅ チャットで確定した（手動確定）'}
-                          </button>
+                          {manualConfirmItemId === item.id ? (
+                            <div className="rounded-lg p-2.5 space-y-2" style={{ background: '#fefce8', border: '1px solid #fde68a' }}>
+                              <p className="text-xs font-semibold" style={{ color: '#78350f' }}>どの日時で確定しましたか？</p>
+                              <div className="space-y-1.5">
+                                {item.candidates.map((c, i) => (
+                                  <label key={`existing-${i}`} className="flex items-center gap-2 text-xs" style={{ color: '#3d2b0e' }}>
+                                    <input
+                                      type="radio"
+                                      name={`manual-confirm-${item.id}`}
+                                      checked={manualConfirmChoiceKey === `existing:${i}`}
+                                      onChange={() => setManualConfirmChoiceKey(`existing:${i}`)}
+                                      style={{ accentColor: '#2a5c1e' }}
+                                    />
+                                    {c.date} {c.time}
+                                  </label>
+                                ))}
+                                {item.alternative_candidates?.map((c, i) => (
+                                  <label key={`alt-${i}`} className="flex items-center gap-2 text-xs" style={{ color: '#3d2b0e' }}>
+                                    <input
+                                      type="radio"
+                                      name={`manual-confirm-${item.id}`}
+                                      checked={manualConfirmChoiceKey === `alt:${i}`}
+                                      onChange={() => setManualConfirmChoiceKey(`alt:${i}`)}
+                                      style={{ accentColor: '#2a5c1e' }}
+                                    />
+                                    {c.date} {c.time}（提案された別日）
+                                  </label>
+                                ))}
+                                <label className="flex items-center gap-2 text-xs" style={{ color: '#3d2b0e' }}>
+                                  <input
+                                    type="radio"
+                                    name={`manual-confirm-${item.id}`}
+                                    checked={manualConfirmChoiceKey === 'other'}
+                                    onChange={() => setManualConfirmChoiceKey('other')}
+                                    style={{ accentColor: '#2a5c1e' }}
+                                  />
+                                  候補にない日時
+                                </label>
+                              </div>
+                              {manualConfirmChoiceKey === 'other' && (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="date"
+                                    value={manualConfirmCustomDate}
+                                    onChange={(e) => setManualConfirmCustomDate(e.target.value)}
+                                    aria-label="確定した日付"
+                                    className="flex-1 h-9 rounded-lg px-2 text-xs focus:outline-none"
+                                    style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
+                                  />
+                                  <input
+                                    type="time"
+                                    value={manualConfirmCustomTime}
+                                    onChange={(e) => setManualConfirmCustomTime(e.target.value)}
+                                    aria-label="確定した時間"
+                                    className="flex-1 h-9 rounded-lg px-2 text-xs focus:outline-none"
+                                    style={{ border: '1px solid #d4a853', background: '#fffdf7', color: '#2c1a0e' }}
+                                  />
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-xs font-medium mb-1" style={{ color: '#6b4c0a' }}>所要時間</p>
+                                <DurationPicker
+                                  selectedPreset={manualConfirmDurationPreset}
+                                  customMinutes={manualConfirmDurationCustom}
+                                  onPresetChange={setManualConfirmDurationPreset}
+                                  onCustomChange={setManualConfirmDurationCustom}
+                                />
+                              </div>
+                              {manualConfirmError && (
+                                <p className="text-xs" style={{ color: '#b91c1c' }}>{manualConfirmError}</p>
+                              )}
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleManualConfirmSubmit(item)}
+                                  disabled={isConfirming}
+                                  className="farm-btn flex-1 flex h-10 items-center justify-center text-xs focus:outline-none transition-colors disabled:opacity-60"
+                                >
+                                  {isConfirming ? '確定中...' : '確定する'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={closeManualConfirmForm}
+                                  className="flex h-10 px-3 items-center justify-center rounded-lg text-xs font-medium focus:outline-none transition-colors"
+                                  style={{ border: '1.5px solid #d4a853', color: '#6b4c0a', background: '#fffdf7' }}
+                                >
+                                  キャンセル
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openManualConfirmForm(item)}
+                              className="farm-btn flex h-11 w-full items-center justify-center text-xs focus:outline-none transition-colors"
+                            >
+                              ✅ チャットで確定した（手動確定）
+                            </button>
+                          )}
                         </div>
                       )}
 
