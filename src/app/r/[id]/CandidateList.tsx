@@ -188,9 +188,10 @@ export default function CandidateList({
     setAltErrorMessage('')
   }
 
-  // 確定済み表示
-  if (isConfirmed && selectedIndex !== null && candidates[selectedIndex]) {
-    const confirmedCandidate = candidates[selectedIndex]
+  // 確定済み表示（confirmed_index による確定と、候補日を伴わない手動確定の両方に対応）
+  if (isConfirmed) {
+    const confirmedCandidate =
+      selectedIndex !== null && candidates[selectedIndex] ? candidates[selectedIndex] : null
     const displayDuration = confirmedDurationMinutes
       ? formatDurationMinutes(confirmedDurationMinutes)
       : null
@@ -200,9 +201,15 @@ export default function CandidateList({
         <p className="mb-2 text-base font-semibold" style={{ color: '#065f46' }}>
           ミーティングが確定しました！
         </p>
-        <p className="mb-1 text-sm" style={{ color: '#047857' }}>
-          {formatCandidate(confirmedCandidate)}
-        </p>
+        {confirmedCandidate ? (
+          <p className="mb-1 text-sm" style={{ color: '#047857' }}>
+            {formatCandidate(confirmedCandidate)}
+          </p>
+        ) : (
+          <p className="mb-1 text-sm" style={{ color: '#047857' }}>
+            送信者からの連絡内容で確定しています。
+          </p>
+        )}
         {displayDuration && (
           <p className="mb-1 text-sm" style={{ color: '#047857' }}>所要時間: {displayDuration}</p>
         )}

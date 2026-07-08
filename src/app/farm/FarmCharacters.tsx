@@ -217,6 +217,19 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
     prevSummaryRef.current = liveSummaryCount
   }, [liveSummaryCount])
 
+  // 確定検知（確定回数の増加がトリガー。要約提出の成長演出とは別に、確定自体を知らせる）
+  const prevConfirmedRef = useRef(liveConfirmedCount)
+  const [showConfirmedPop, setShowConfirmedPop] = useState(false)
+  useEffect(() => {
+    if (liveConfirmedCount > prevConfirmedRef.current) {
+      setShowConfirmedPop(true)
+      const t = setTimeout(() => setShowConfirmedPop(false), 2200)
+      prevConfirmedRef.current = liveConfirmedCount
+      return () => clearTimeout(t)
+    }
+    prevConfirmedRef.current = liveConfirmedCount
+  }, [liveConfirmedCount])
+
   useEffect(() => {
     setDraft(readDraft(contact.id))
   }, [contact.id])
@@ -971,7 +984,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
                           </span>
                         ) : hasReply ? (
                           <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: '#dbeafe', color: '#1e40af' }}>
-                            📬 返信あり
+                            📅 別日提案あり
                           </span>
                         ) : isDraftItem ? (
                           <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: '#ffedd5', color: '#9a3412' }}>
@@ -1173,7 +1186,7 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
         {/* 吹き出し */}
         <div className={showReplied ? 'relative mb-1 flex items-center justify-center animate-bounce' : 'relative mb-1 flex items-center justify-center'} style={{ width: 56, height: 44 }}>
           <img
-            src={showReplied && !hasDraft ? '/images/processed_a6.png' : '/images/processed_a1.png'}
+            src={showReplied ? '/images/processed_a6.png' : '/images/processed_a1.png'}
             alt=""
             aria-hidden="true"
             width={56}
@@ -1182,10 +1195,10 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
             draggable={false}
           />
           <span className="relative z-10 font-bold leading-none text-center" style={{ fontSize: 11, color: '#3d2b0e' }}>
-            {hasDraft ? (
+            {showReplied ? (
+              <span className="text-red-600">別日提案あり！</span>
+            ) : hasDraft ? (
               <span className="text-orange-600">未送信</span>
-            ) : showReplied ? (
-              <span className="text-red-600">返信あり！</span>
             ) : showPending ? (
               <PendingDots />
             ) : (
@@ -1194,18 +1207,29 @@ function Character({ contact, liveRepliedCount, liveConfirmedCount, livePendingC
           </span>
         </div>
 
-        {/* 成長バッジ */}
-        {showLevelUp && (
+        {/* 確定バッジ・成長バッジ（同じ位置に表示。同時発生は稀なため重なりは許容する） */}
+        {(showConfirmedPop || showLevelUp) && (
           <div
             className="absolute left-1/2 z-20 pointer-events-none animate-badge-float"
             style={{ bottom: '100%' }}
           >
-            <span
-              className="text-xs font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap"
-              style={{ background: '#2a5c1e', color: '#f5e6a3' }}
-            >
-              🌱 成長した！
-            </span>
+            {showConfirmedPop && (
+              <span
+                className="flex items-center gap-1 text-xs font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap"
+                style={{ background: '#a45c1e', color: '#fff3d6' }}
+              >
+                <img src="/images/processed_a7.png" alt="" aria-hidden="true" width={14} height={14} draggable={false} />
+                確定しました！
+              </span>
+            )}
+            {showLevelUp && (
+              <span
+                className="text-xs font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap"
+                style={{ background: '#2a5c1e', color: '#f5e6a3' }}
+              >
+                🌱 成長した！
+              </span>
+            )}
           </div>
         )}
 

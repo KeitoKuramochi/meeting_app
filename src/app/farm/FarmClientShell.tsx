@@ -36,7 +36,7 @@ function ContactListItem({ contact, repliedCount, confirmedCount, pendingCount, 
   const borderColor = hasReply ? '#3b82f6' : hasDraft ? '#d97706' : hasPending ? '#d97706' : '#c8953a'
   const statusColor = hasReply ? '#1d4ed8' : hasDraft ? '#9a3412' : hasPending ? '#92400e' : '#6b4c0a'
   const statusText = hasReply
-    ? '📬 返信が届いています'
+    ? '📅 別の日程が提案されました'
     : hasDraft
     ? '📋 未送信（URLをまだ送っていません）'
     : hasPending

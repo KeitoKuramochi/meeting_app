@@ -41,8 +41,12 @@ export default async function ReviewPage({ params }: Props) {
     )
   }
 
-  const meeting: Meeting = data
-  const isConfirmed = meeting.confirmed_index !== null
+  return renderReviewPage(data)
+}
+
+function renderReviewPage(meeting: Meeting) {
+  // confirmed_index による確定（このページ経由）だけでなく、送信側の「手動確定」も確定として扱う
+  const isConfirmed = meeting.confirmed_index !== null || meeting.manually_confirmed === true
 
   return (
     <div className="min-h-screen" style={{ background: '#f5ede0' }}>
